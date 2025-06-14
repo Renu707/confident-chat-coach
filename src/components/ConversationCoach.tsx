@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -57,7 +56,7 @@ const ConversationCoach: React.FC<ConversationCoachProps> = ({
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const speechSynthesisRef = useRef<SpeechSynthesisUtterance | null>(null);
 
-  // Initialize speech recognition
+  // Initialize speech recognition with better error handling
   useEffect(() => {
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
       const SpeechRecognitionConstructor = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -65,30 +64,47 @@ const ConversationCoach: React.FC<ConversationCoachProps> = ({
       recognitionRef.current!.continuous = false;
       recognitionRef.current!.interimResults = true;
       recognitionRef.current!.lang = 'en-US';
+      recognitionRef.current!.maxAlternatives = 1;
 
       recognitionRef.current!.onstart = () => {
+        console.log('Speech recognition started');
         setIsListening(true);
       };
 
       recognitionRef.current!.onresult = (event: any) => {
-        const transcript = Array.from(event.results)
-          .map((result: any) => result[0])
-          .map((result: any) => result.transcript)
-          .join('');
+        console.log('Speech recognition result:', event);
+        let transcript = '';
+        
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          if (event.results[i].isFinal) {
+            transcript += event.results[i][0].transcript;
+          }
+        }
 
-        if (event.results[0].isFinal) {
-          setCurrentInput(transcript);
-          setIsListening(false);
+        if (transcript.trim()) {
+          console.log('Final transcript:', transcript);
+          setCurrentInput(prev => prev + transcript);
         }
       };
 
-      recognitionRef.current!.onerror = () => {
+      recognitionRef.current!.onerror = (event: any) => {
+        console.error('Speech recognition error:', event.error);
         setIsListening(false);
+        
+        // Show user-friendly error message
+        if (event.error === 'not-allowed') {
+          alert('Microphone access denied. Please allow microphone access and try again.');
+        } else if (event.error === 'no-speech') {
+          console.log('No speech detected, try speaking again');
+        }
       };
 
       recognitionRef.current!.onend = () => {
+        console.log('Speech recognition ended');
         setIsListening(false);
       };
+    } else {
+      console.warn('Speech recognition not supported in this browser');
     }
 
     return () => {
@@ -410,21 +426,32 @@ const ConversationCoach: React.FC<ConversationCoachProps> = ({
     setMessages(prev => [...prev, shuffleMessage]);
   };
 
-  const toggleListening = () => {
+  const toggleListening = async () => {
     if (!recognitionRef.current) {
-      alert('Speech recognition is not supported in your browser');
+      alert('Speech recognition is not supported in your browser. Please try using Chrome or Edge.');
       return;
     }
 
     if (isListening) {
+      console.log('Stopping speech recognition');
       recognitionRef.current.stop();
     } else {
-      // Stop any current speech before listening
-      if ('speechSynthesis' in window) {
-        speechSynthesis.cancel();
-        setIsSpeaking(false);
+      try {
+        // Request microphone permission first
+        await navigator.mediaDevices.getUserMedia({ audio: true });
+        
+        // Stop any current speech before listening
+        if ('speechSynthesis' in window) {
+          speechSynthesis.cancel();
+          setIsSpeaking(false);
+        }
+        
+        console.log('Starting speech recognition');
+        recognitionRef.current.start();
+      } catch (error) {
+        console.error('Microphone access error:', error);
+        alert('Could not access microphone. Please check your browser settings and allow microphone access.');
       }
-      recognitionRef.current.start();
     }
   };
 
@@ -656,22 +683,22 @@ const ConversationCoach: React.FC<ConversationCoachProps> = ({
         </div>
       </ScrollArea>
 
-      {/* Enhanced Input Area */}
+      {/* Enhanced Input Area with better voice feedback */}
       <div className="p-6 bg-slate-800/90 backdrop-blur-sm border-t border-slate-700">
         <div className="flex items-center space-x-3">
           <div className="flex-1 relative">
             <Input
               value={currentInput}
               onChange={(e) => setCurrentInput(e.target.value)}
-              placeholder={isListening ? "🎤 Listening..." : "Type or speak your response... 🌟"}
+              placeholder={isListening ? "🎤 Listening... Speak now!" : "Type or speak your response... 🌟"}
               onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
-              className="pr-14 py-3 text-base bg-slate-700 border-slate-600 text-slate-100 placeholder:text-slate-400 focus:border-blue-400 focus:ring-blue-400/20"
-              disabled={isTyping || isListening}
+              className={`pr-14 py-3 text-base bg-slate-700 border-slate-600 text-slate-100 placeholder:text-slate-400 focus:border-blue-400 focus:ring-blue-400/20 ${isListening ? 'ring-2 ring-red-400 border-red-400' : ''}`}
+              disabled={isTyping}
             />
             <Button
               size="sm"
               variant="ghost"
-              className={`absolute right-2 top-1/2 transform -translate-y-1/2 hover:bg-slate-600 text-slate-400 hover:text-slate-200 ${isListening ? 'text-red-400 bg-red-900/30' : ''}`}
+              className={`absolute right-2 top-1/2 transform -translate-y-1/2 hover:bg-slate-600 text-slate-400 hover:text-slate-200 transition-all ${isListening ? 'text-red-400 bg-red-900/30 scale-110' : ''}`}
               onClick={toggleListening}
               disabled={isTyping || isSpeaking}
             >
@@ -698,7 +725,9 @@ const ConversationCoach: React.FC<ConversationCoachProps> = ({
               <p>Currently: {conversationContext.mood} conversation</p>
             )}
             {isAudioEnabled && (
-              <p className="text-blue-400">🎤 Voice mode active - Click mic to speak!</p>
+              <p className="text-blue-400">
+                {isListening ? '🎤 Recording... Speak now!' : '🎤 Voice mode active - Click mic to speak!'}
+              </p>
             )}
             {isPrivateMode && (
               <div className="flex items-center gap-1 text-green-400">
