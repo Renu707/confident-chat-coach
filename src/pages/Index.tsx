@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -6,6 +5,8 @@ import ScenarioSelector from '@/components/ScenarioSelector';
 import ConversationCoach from '@/components/ConversationCoach';
 import ProgressDashboard from '@/components/ProgressDashboard';
 import AudioSupport from '@/components/AudioSupport';
+import EmotionalSupport from '@/components/EmotionalSupport';
+import CommunityHub from '@/components/CommunityHub';
 import { 
   MessageCircle, 
   BarChart3, 
@@ -18,10 +19,11 @@ import {
   CheckCircle,
   Eye,
   EyeOff,
-  Headphones
+  Headphones,
+  Heart
 } from 'lucide-react';
 
-type AppState = 'welcome' | 'scenarios' | 'coaching' | 'progress' | 'audio-support';
+type AppState = 'welcome' | 'scenarios' | 'coaching' | 'progress' | 'audio-support' | 'emotional-support' | 'community';
 
 interface SessionResult {
   id: string;
