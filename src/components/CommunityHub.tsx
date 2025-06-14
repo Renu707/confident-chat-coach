@@ -26,7 +26,9 @@ import {
   Camera,
   Share2,
   Reply,
-  MoreHorizontal
+  MoreHorizontal,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 
 interface CommunityHubProps {
@@ -62,10 +64,20 @@ interface CommunityPost {
   content: string;
   timeAgo: string;
   likes: number;
-  replies: number;
+  replies: PostReply[];
   userLiked: boolean;
   isUser?: boolean;
   tags?: string[];
+}
+
+interface PostReply {
+  id: string;
+  author: string;
+  content: string;
+  timeAgo: string;
+  likes: number;
+  userLiked: boolean;
+  isUser?: boolean;
 }
 
 interface ChatMessage {
@@ -84,6 +96,8 @@ const CommunityHub: React.FC<CommunityHubProps> = ({ onBack }) => {
   const [postType, setPostType] = useState<'question' | 'update' | 'celebration' | 'support'>('question');
   const [selectedMentor, setSelectedMentor] = useState<any>(null);
   const [activeTab, setActiveTab] = useState('feed');
+  const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set());
+  const [replyInputs, setReplyInputs] = useState<Record<string, string>>({});
   
   const [challenges, setChallenges] = useState<Challenge[]>([
     {
@@ -157,7 +171,24 @@ const CommunityHub: React.FC<CommunityHubProps> = ({ onBack }) => {
       content: "I've been working on my phone anxiety for months but still get nervous before important calls. What strategies have worked for you?",
       timeAgo: "1 hour ago",
       likes: 23,
-      replies: 8,
+      replies: [
+        {
+          id: "reply-1-1",
+          author: "Sarah K.",
+          content: "I practice writing down key points before calls. It really helps me feel more prepared!",
+          timeAgo: "45 min ago",
+          likes: 8,
+          userLiked: false
+        },
+        {
+          id: "reply-1-2",
+          author: "Alex M.",
+          content: "Deep breathing exercises before the call have been a game changer for me. Also, having a glass of water nearby helps.",
+          timeAgo: "30 min ago",
+          likes: 12,
+          userLiked: false
+        }
+      ],
       userLiked: false,
       tags: ["phone-anxiety", "tips", "help"]
     },
@@ -169,7 +200,24 @@ const CommunityHub: React.FC<CommunityHubProps> = ({ onBack }) => {
       content: "Just finished my first job interview since starting my communication journey. I was nervous but I spoke clearly and felt confident! 🎉",
       timeAgo: "3 hours ago",
       likes: 156,
-      replies: 24,
+      replies: [
+        {
+          id: "reply-2-1",
+          author: "Emma T.",
+          content: "That's amazing! You should be so proud of yourself! 🌟",
+          timeAgo: "2 hours ago",
+          likes: 24,
+          userLiked: false
+        },
+        {
+          id: "reply-2-2",
+          author: "Jordan P.",
+          content: "Congratulations! This is such a huge step. How did you prepare?",
+          timeAgo: "1 hour ago",
+          likes: 18,
+          userLiked: false
+        }
+      ],
       userLiked: false,
       tags: ["milestone", "interview", "confidence"]
     },
@@ -181,7 +229,24 @@ const CommunityHub: React.FC<CommunityHubProps> = ({ onBack }) => {
       content: "Today was really hard. Had a stuttering episode during a presentation and feeling discouraged. Could use some encouragement.",
       timeAgo: "5 hours ago",
       likes: 89,
-      replies: 31,
+      replies: [
+        {
+          id: "reply-3-1",
+          author: "Maya R.",
+          content: "You're so brave for sharing this. Bad days don't erase your progress. You've got this! 💪",
+          timeAgo: "4 hours ago",
+          likes: 31,
+          userLiked: false
+        },
+        {
+          id: "reply-3-2",
+          author: "Dr. Lisa Chen",
+          content: "Remember that one difficult moment doesn't define you. Every presentation, even the challenging ones, is practice. You're building resilience. ❤️",
+          timeAgo: "3 hours ago",
+          likes: 45,
+          userLiked: false
+        }
+      ],
       userLiked: false,
       tags: ["support", "difficult-day", "stuttering"]
     },
@@ -192,7 +257,16 @@ const CommunityHub: React.FC<CommunityHubProps> = ({ onBack }) => {
       content: "Week 3 of daily practice complete! Small wins: ordered coffee without writing it down, asked for directions, called to make a dentist appointment. Progress feels good! 💪",
       timeAgo: "8 hours ago",
       likes: 67,
-      replies: 12,
+      replies: [
+        {
+          id: "reply-4-1",
+          author: "Sam K.",
+          content: "These 'small' wins are actually HUGE! Keep celebrating every step! 🎉",
+          timeAgo: "7 hours ago",
+          likes: 22,
+          userLiked: false
+        }
+      ],
       userLiked: false,
       tags: ["progress", "practice", "daily-wins"]
     }
@@ -296,6 +370,98 @@ const CommunityHub: React.FC<CommunityHubProps> = ({ onBack }) => {
     );
   };
 
+  const likeReply = (postId: string, replyId: string) => {
+    setCommunityPosts(prev => 
+      prev.map(post => 
+        post.id === postId 
+          ? {
+              ...post,
+              replies: post.replies.map(reply =>
+                reply.id === replyId
+                  ? {
+                      ...reply,
+                      userLiked: !reply.userLiked,
+                      likes: reply.userLiked ? reply.likes - 1 : reply.likes + 1
+                    }
+                  : reply
+              )
+            }
+          : post
+      )
+    );
+  };
+
+  const toggleReplies = (postId: string) => {
+    setExpandedPosts(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(postId)) {
+        newSet.delete(postId);
+      } else {
+        newSet.add(postId);
+      }
+      return newSet;
+    });
+  };
+
+  const addReply = (postId: string) => {
+    const replyContent = replyInputs[postId];
+    if (replyContent?.trim()) {
+      const newReply: PostReply = {
+        id: `reply-${postId}-${Date.now()}`,
+        author: "You",
+        content: replyContent,
+        timeAgo: "now",
+        likes: 0,
+        userLiked: false,
+        isUser: true
+      };
+
+      setCommunityPosts(prev => 
+        prev.map(post => 
+          post.id === postId 
+            ? { 
+                ...post, 
+                replies: [...post.replies, newReply]
+              }
+            : post
+        )
+      );
+
+      setReplyInputs(prev => ({ ...prev, [postId]: '' }));
+
+      // Simulate community response
+      setTimeout(() => {
+        const encouragingReplies = [
+          "Thank you for sharing your thoughts! 💕",
+          "This is really helpful! 🌟",
+          "Great perspective! 👏",
+          "I appreciate your input! ✨"
+        ];
+        const randomReply = encouragingReplies[Math.floor(Math.random() * encouragingReplies.length)];
+        
+        const communityReply: PostReply = {
+          id: `reply-${postId}-${Date.now() + 1}`,
+          author: "Community Member",
+          content: randomReply,
+          timeAgo: "now",
+          likes: Math.floor(Math.random() * 3) + 1,
+          userLiked: false
+        };
+
+        setCommunityPosts(prev => 
+          prev.map(post => 
+            post.id === postId 
+              ? { 
+                  ...post, 
+                  replies: [...post.replies, communityReply]
+                }
+              : post
+          )
+        );
+      }, 2000);
+    }
+  };
+
   const createPost = () => {
     if (newPostContent.trim()) {
       const newPost: CommunityPost = {
@@ -306,7 +472,7 @@ const CommunityHub: React.FC<CommunityHubProps> = ({ onBack }) => {
         content: newPostContent,
         timeAgo: "now",
         likes: 0,
-        replies: 0,
+        replies: [],
         userLiked: false,
         isUser: true,
         tags: []
@@ -327,10 +493,19 @@ const CommunityHub: React.FC<CommunityHubProps> = ({ onBack }) => {
         ];
         const randomResponse = encouragingResponses[Math.floor(Math.random() * encouragingResponses.length)];
         
+        const firstReply: PostReply = {
+          id: `reply-${newPost.id}-1`,
+          author: "Community Member",
+          content: randomResponse,
+          timeAgo: "now",
+          likes: Math.floor(Math.random() * 5) + 1,
+          userLiked: false
+        };
+
         setCommunityPosts(prev => 
           prev.map(post => 
             post.id === newPost.id 
-              ? { ...post, replies: 1, likes: Math.floor(Math.random() * 5) + 1 }
+              ? { ...post, likes: Math.floor(Math.random() * 5) + 1, replies: [firstReply] }
               : post
           )
         );
@@ -594,7 +769,7 @@ const CommunityHub: React.FC<CommunityHubProps> = ({ onBack }) => {
                           </div>
                         )}
                         
-                        <div className="flex items-center space-x-6 text-slate-400">
+                        <div className="flex items-center space-x-6 text-slate-400 mb-4">
                           <button 
                             onClick={() => likePost(post.id)}
                             className={`flex items-center space-x-1 hover:text-red-400 transition-colors ${post.userLiked ? 'text-red-400' : ''}`}
@@ -602,9 +777,17 @@ const CommunityHub: React.FC<CommunityHubProps> = ({ onBack }) => {
                             <Heart className={`w-4 h-4 ${post.userLiked ? 'fill-current' : ''}`} />
                             <span>{post.likes}</span>
                           </button>
-                          <button className="flex items-center space-x-1 hover:text-blue-400 transition-colors">
+                          <button 
+                            onClick={() => toggleReplies(post.id)}
+                            className="flex items-center space-x-1 hover:text-blue-400 transition-colors"
+                          >
                             <Reply className="w-4 h-4" />
-                            <span>{post.replies} replies</span>
+                            <span>{post.replies.length} replies</span>
+                            {expandedPosts.has(post.id) ? (
+                              <ChevronUp className="w-3 h-3" />
+                            ) : (
+                              <ChevronDown className="w-3 h-3" />
+                            )}
                           </button>
                           <button className="flex items-center space-x-1 hover:text-green-400 transition-colors">
                             <Share2 className="w-4 h-4" />
@@ -614,6 +797,57 @@ const CommunityHub: React.FC<CommunityHubProps> = ({ onBack }) => {
                             <MoreHorizontal className="w-4 h-4" />
                           </button>
                         </div>
+
+                        {/* Replies Section */}
+                        {expandedPosts.has(post.id) && (
+                          <div className="space-y-4 border-t border-slate-700 pt-4">
+                            {/* Existing Replies */}
+                            {post.replies.map((reply) => (
+                              <div key={reply.id} className="flex items-start space-x-3 ml-4">
+                                <div className={`w-8 h-8 ${reply.isUser ? 'bg-gradient-to-r from-purple-500 to-pink-500' : 'bg-gradient-to-r from-green-500 to-teal-500'} rounded-full flex items-center justify-center text-white text-sm font-bold`}>
+                                  {reply.author.charAt(0)}
+                                </div>
+                                <div className="flex-1 bg-slate-800/50 rounded-lg p-3">
+                                  <div className="flex items-center space-x-2 mb-1">
+                                    <span className="font-medium text-slate-200 text-sm">{reply.author}</span>
+                                    <span className="text-xs text-slate-500">{reply.timeAgo}</span>
+                                  </div>
+                                  <p className="text-slate-300 text-sm mb-2">{reply.content}</p>
+                                  <button 
+                                    onClick={() => likeReply(post.id, reply.id)}
+                                    className={`flex items-center space-x-1 text-xs hover:text-red-400 transition-colors ${reply.userLiked ? 'text-red-400' : 'text-slate-500'}`}
+                                  >
+                                    <Heart className={`w-3 h-3 ${reply.userLiked ? 'fill-current' : ''}`} />
+                                    <span>{reply.likes}</span>
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+
+                            {/* Add Reply Input */}
+                            <div className="flex items-start space-x-3 ml-4">
+                              <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white text-sm font-bold">
+                                Y
+                              </div>
+                              <div className="flex-1 flex space-x-2">
+                                <Input
+                                  placeholder="Write a reply..."
+                                  value={replyInputs[post.id] || ''}
+                                  onChange={(e) => setReplyInputs(prev => ({ ...prev, [post.id]: e.target.value }))}
+                                  onKeyPress={(e) => e.key === 'Enter' && addReply(post.id)}
+                                  className="bg-slate-800/50 border-slate-600 text-slate-200 placeholder:text-slate-500"
+                                />
+                                <Button 
+                                  onClick={() => addReply(post.id)}
+                                  size="sm"
+                                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                                >
+                                  <Send className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </CardContent>
