@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -64,21 +65,170 @@ const ConversationCoach: React.FC<ConversationCoachProps> = ({
   };
 
   const generateCoachResponse = (userMessage: string): { content: string; tip?: string } => {
+    const messageLength = userMessage.length;
+    const isQuestion = userMessage.includes('?');
+    const hasPersonalDetail = userMessage.toLowerCase().includes('i ') || userMessage.toLowerCase().includes('my ');
+    
+    // Analyze the user's message for conversation skills
+    const analysisResults = analyzeConversationSkills(userMessage);
+    
+    // Generate contextual responses based on scenario and user input
+    if (scenario === 'workplace-small-talk') {
+      return generateWorkplaceResponse(userMessage, analysisResults);
+    } else if (scenario === 'casual-social-event') {
+      return generateSocialResponse(userMessage, analysisResults);
+    } else if (scenario === 'professional-networking') {
+      return generateNetworkingResponse(userMessage, analysisResults);
+    } else if (scenario === 'interview-preparation') {
+      return generateInterviewResponse(userMessage, analysisResults);
+    } else if (scenario === 'dating-conversation') {
+      return generateDatingResponse(userMessage, analysisResults);
+    }
+    
+    // Default educational response
+    return {
+      content: "That's a great start! I can see you're putting thought into your response. Let me ask you something to keep the conversation flowing - what made you interested in that topic?",
+      tip: "Remember: Good conversations are like tennis - keep the ball going back and forth by asking questions and sharing your own experiences."
+    };
+  };
+
+  const analyzeConversationSkills = (message: string) => {
+    return {
+      hasQuestion: message.includes('?'),
+      isPersonal: message.toLowerCase().includes('i ') || message.toLowerCase().includes('my '),
+      showsInterest: message.toLowerCase().includes('tell me') || message.toLowerCase().includes('what about') || message.toLowerCase().includes('how about'),
+      length: message.length,
+      isFollowUp: message.toLowerCase().includes('and you') || message.toLowerCase().includes('what about you')
+    };
+  };
+
+  const generateWorkplaceResponse = (userMessage: string, analysis: any) => {
     const responses = [
       {
-        content: "That's a wonderful way to start! I can see you're putting real thought into your approach. Your confidence is already showing. What would you say next?",
-        tip: "You're demonstrating excellent initiative by taking the first step in the conversation!"
+        content: "That's wonderful! I love how you brought up something we can both relate to. You know, I've been thinking about work-life balance lately too. How do you usually unwind after a busy day?",
+        tip: "Great job finding common ground! In workplace conversations, relating to shared experiences helps build rapport with colleagues."
       },
       {
-        content: "I really appreciate you sharing that with me. It sounds like you have some fascinating experiences. I'd love to hear more about that - can you tell me what drew you to that?",
-        tip: "Asking thoughtful follow-up questions like this shows genuine interest and keeps conversations flowing naturally."
+        content: "Oh, that sounds really interesting! I hadn't thought about it that way before. It's nice to learn something new during our coffee break. What got you started with that?",
+        tip: "You're showing genuine curiosity - that's excellent! Asking follow-up questions keeps workplace conversations engaging without being too personal."
       },
       {
-        content: "That's incredibly interesting! I hadn't considered it from that perspective before. Your insight is really valuable. What initially got you interested in exploring that topic?",
-        tip: "Expressing curiosity and asking open-ended questions like this creates deeper, more meaningful connections."
+        content: "I can definitely relate to that! It's one of those things that makes the workday more enjoyable when you find people who share similar interests. Have you noticed any other colleagues who might be into that too?",
+        tip: "Perfect! You're building connections by finding shared interests. This is how workplace friendships often begin."
       }
     ];
-    
+
+    if (!analysis.hasQuestion) {
+      responses.push({
+        content: "That's really cool! I appreciate you sharing that with me. It makes me curious - what's the most interesting part about that for you?",
+        tip: "I noticed you shared something personal, which is great! Try ending with a question to keep the conversation balanced and engaging."
+      });
+    }
+
+    return responses[Math.floor(Math.random() * responses.length)];
+  };
+
+  const generateSocialResponse = (userMessage: string, analysis: any) => {
+    const responses = [
+      {
+        content: "Oh wow, that's so cool! I love meeting people with different backgrounds. It makes parties like this so much more interesting. How do you know the host?",
+        tip: "Excellent icebreaker! Asking about the connection to the host is a classic way to find common ground at social events."
+      },
+      {
+        content: "That's fascinating! I never would have guessed. You know what's funny? I was just thinking how everyone here seems to have such unique stories. What's been the most surprising thing about tonight so far?",
+        tip: "You're doing great at being open and curious! This kind of enthusiasm makes people want to continue talking with you."
+      },
+      {
+        content: "I love that! It's so refreshing to meet someone who's passionate about what they do. The energy in your voice really shows. What's next on your horizon with that?",
+        tip: "You're showing genuine interest in their passions - that's the key to memorable conversations at social events!"
+      }
+    ];
+
+    if (analysis.length < 20) {
+      responses.push({
+        content: "Absolutely! Tell me more about that - I'm really curious to hear your perspective on it.",
+        tip: "Try expanding on your thoughts a bit more. People love when you share your genuine reactions and ask for their perspective."
+      });
+    }
+
+    return responses[Math.floor(Math.random() * responses.length)];
+  };
+
+  const generateNetworkingResponse = (userMessage: string, analysis: any) => {
+    const responses = [
+      {
+        content: "That's impressive! Your experience in that area sounds really valuable. I'm always interested in learning from people with different professional backgrounds. What trends are you seeing in your industry right now?",
+        tip: "Great professional introduction! Asking about industry trends shows you're engaged and thinking strategically."
+      },
+      {
+        content: "Wonderful! It sounds like you've built some really solid expertise. I can see why that would be both challenging and rewarding. What drew you to that field initially?",
+        tip: "You're balancing professionalism with personal interest perfectly. This helps build genuine business relationships."
+      },
+      {
+        content: "That's exactly the kind of insight I was hoping to hear tonight! Your perspective on that is really valuable. I'd love to understand how that impacts your day-to-day work.",
+        tip: "Excellent! You're showing that you value their expertise while keeping the conversation professional and engaging."
+      }
+    ];
+
+    if (!analysis.showsInterest) {
+      responses.push({
+        content: "I really appreciate you sharing that background. It gives me a much better sense of your expertise. What would you say is the most exciting project you're working on right now?",
+        tip: "Remember to show curiosity about their work! Networking conversations thrive when both people demonstrate genuine professional interest."
+      });
+    }
+
+    return responses[Math.floor(Math.random() * responses.length)];
+  };
+
+  const generateInterviewResponse = (userMessage: string, analysis: any) => {
+    const responses = [
+      {
+        content: "That's a solid answer! I can see you've thought carefully about this. Your experience clearly demonstrates that skill. Can you tell me about a specific time when that quality helped you overcome a challenge?",
+        tip: "Great start! In interviews, always follow up general statements with specific examples. Use the STAR method: Situation, Task, Action, Result."
+      },
+      {
+        content: "I appreciate the honesty in your response. That kind of self-awareness is valuable. How have you been working to develop that area, and what progress have you seen?",
+        tip: "Good approach! When discussing weaknesses, always include what you're doing to improve. It shows growth mindset."
+      },
+      {
+        content: "Excellent! Your passion for this really comes through. That enthusiasm, combined with your background, suggests you'd be a great fit. What questions do you have about the role or our company culture?",
+        tip: "Perfect! You're showing genuine interest. Always prepare thoughtful questions for interviews - it demonstrates your serious interest in the position."
+      }
+    ];
+
+    if (analysis.length < 30) {
+      responses.push({
+        content: "That's a good start! For interview success, try to elaborate a bit more with specific examples. What particular situation can you think of that demonstrates this?",
+        tip: "Remember: Interviews are your chance to tell your story! Provide concrete examples and details that make your experiences memorable."
+      });
+    }
+
+    return responses[Math.floor(Math.random() * responses.length)];
+  };
+
+  const generateDatingResponse = (userMessage: string, analysis: any) => {
+    const responses = [
+      {
+        content: "That's really interesting! I love how thoughtful you are about that. It tells me a lot about what matters to you. What got you interested in that in the first place?",
+        tip: "Beautiful! You're sharing something meaningful about yourself while showing curiosity about their interests. This creates real connection."
+      },
+      {
+        content: "I can hear the excitement in your voice when you talk about that! It's really attractive when someone is passionate about something. How do you usually spend your weekends with that hobby?",
+        tip: "Perfect! Showing genuine interest in their passions and asking about their lifestyle helps you both learn if you're compatible."
+      },
+      {
+        content: "That's so cool! I wouldn't have expected that, but it makes total sense now that you mention it. You seem like someone who really thinks about these things. What's been your favorite experience with that recently?",
+        tip: "Excellent conversation skills! You're being genuinely curious while showing that you find them interesting as a person."
+      }
+    ];
+
+    if (!analysis.isFollowUp) {
+      responses.push({
+        content: "I really appreciate you sharing that with me. It's nice to learn more about who you are. What would you like to know about me?",
+        tip: "Great sharing! Remember that dating conversations work best when both people contribute. Try asking 'What about you?' to keep things balanced."
+      });
+    }
+
     return responses[Math.floor(Math.random() * responses.length)];
   };
 
