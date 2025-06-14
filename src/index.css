@@ -7,43 +7,43 @@
 
 @layer base {
   :root {
-    --background: 248 250 252;
-    --foreground: 30 41 59;
+    --background: 15 23 42;
+    --foreground: 248 250 252;
 
-    --card: 255 255 255;
-    --card-foreground: 30 41 59;
+    --card: 30 41 59;
+    --card-foreground: 248 250 252;
 
-    --popover: 255 255 255;
-    --popover-foreground: 30 41 59;
+    --popover: 30 41 59;
+    --popover-foreground: 248 250 252;
 
     --primary: 14 165 233;
     --primary-foreground: 248 250 252;
 
-    --secondary: 241 245 249;
-    --secondary-foreground: 30 41 59;
+    --secondary: 51 65 85;
+    --secondary-foreground: 248 250 252;
 
-    --muted: 241 245 249;
-    --muted-foreground: 100 116 139;
+    --muted: 51 65 85;
+    --muted-foreground: 148 163 184;
 
-    --accent: 240 249 255;
-    --accent-foreground: 12 74 110;
+    --accent: 30 58 138;
+    --accent-foreground: 248 250 252;
 
     --destructive: 239 68 68;
     --destructive-foreground: 248 250 252;
 
-    --border: 226 232 240;
-    --input: 226 232 240;
+    --border: 51 65 85;
+    --input: 51 65 85;
     --ring: 14 165 233;
 
     --radius: 0.75rem;
 
-    --sidebar-background: 248 250 252;
-    --sidebar-foreground: 30 41 59;
+    --sidebar-background: 15 23 42;
+    --sidebar-foreground: 248 250 252;
     --sidebar-primary: 14 165 233;
-    --sidebar-primary-foreground: 248 250 252;
-    --sidebar-accent: 241 245 249;
-    --sidebar-accent-foreground: 30 41 59;
-    --sidebar-border: 226 232 240;
+    --sidebar-primary-foreground: 15 23 42;
+    --sidebar-accent: 30 41 59;
+    --sidebar-accent-foreground: 248 250 252;
+    --sidebar-border: 51 65 85;
     --sidebar-ring: 14 165 233;
   }
 
@@ -93,7 +93,7 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-slate-900 text-slate-100;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }
 }
@@ -104,11 +104,11 @@
   }
   
   .coach-bubble {
-    @apply bg-coach-50 border border-coach-100 text-coach-700;
+    @apply bg-slate-700 border border-slate-600 text-slate-100;
   }
   
   .user-bubble {
-    @apply bg-primary text-primary-foreground ml-auto;
+    @apply bg-blue-600 text-white ml-auto;
   }
   
   .typing-indicator {
@@ -116,11 +116,11 @@
   }
   
   .typing-dot {
-    @apply w-2 h-2 bg-coach-500 rounded-full animate-bounce;
+    @apply w-2 h-2 bg-blue-400 rounded-full animate-bounce;
   }
 
-  .bg-grid-slate-100 {
-    background-image: radial-gradient(circle, rgb(241 245 249) 1px, transparent 1px);
+  .bg-grid-slate-800 {
+    background-image: radial-gradient(circle, rgb(51 65 85) 1px, transparent 1px);
     background-size: 20px 20px;
   }
 }
