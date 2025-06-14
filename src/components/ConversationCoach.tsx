@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { MessageCircle, Send, Mic, MicOff, RotateCcw, Lightbulb, Shield, Eye, EyeOff, Heart, Star, Shuffle, Target } from 'lucide-react';
+import { MessageCircle, Send, Mic, MicOff, RotateCcw, Lightbulb, Shield, Eye, EyeOff, Heart, Star, Shuffle, Target, Volume2, VolumeX } from 'lucide-react';
 
 interface Message {
   id: string;
@@ -50,7 +50,55 @@ const ConversationCoach: React.FC<ConversationCoachProps> = ({
   const [isPrivateMode, setIsPrivateMode] = useState(false);
   const [conversationContext, setConversationContext] = useState<ConversationContext | null>(null);
   const [conversationHistory, setConversationHistory] = useState<string[]>([]);
+  const [isAudioEnabled, setIsAudioEnabled] = useState(true);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const speechSynthesisRef = useRef<SpeechSynthesisUtterance | null>(null);
+
+  // Initialize speech recognition
+  useEffect(() => {
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current.continuous = false;
+      recognitionRef.current.interimResults = true;
+      recognitionRef.current.lang = 'en-US';
+
+      recognitionRef.current.onstart = () => {
+        setIsListening(true);
+      };
+
+      recognitionRef.current.onresult = (event) => {
+        const transcript = Array.from(event.results)
+          .map(result => result[0])
+          .map(result => result.transcript)
+          .join('');
+
+        if (event.results[0].isFinal) {
+          setCurrentInput(transcript);
+          setIsListening(false);
+        }
+      };
+
+      recognitionRef.current.onerror = () => {
+        setIsListening(false);
+      };
+
+      recognitionRef.current.onend = () => {
+        setIsListening(false);
+      };
+    }
+
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+      if (speechSynthesisRef.current) {
+        speechSynthesis.cancel();
+      }
+    };
+  }, []);
 
   // Dynamic conversation generation system
   const generateUniqueConversation = (): ConversationContext => {
@@ -316,6 +364,11 @@ const ConversationCoach: React.FC<ConversationCoachProps> = ({
       setMessages(prev => [...prev, coachMessage]);
       setIsTyping(false);
       setConfidenceScore(prev => Math.min(100, prev + 5));
+
+      // Speak the coach response if audio is enabled
+      if (isAudioEnabled) {
+        speakText(coachResponse.content);
+      }
     }, 1000 + Math.random() * 1000);
   };
 
@@ -357,7 +410,60 @@ const ConversationCoach: React.FC<ConversationCoachProps> = ({
   };
 
   const toggleListening = () => {
-    setIsListening(!isListening);
+    if (!recognitionRef.current) {
+      alert('Speech recognition is not supported in your browser');
+      return;
+    }
+
+    if (isListening) {
+      recognitionRef.current.stop();
+    } else {
+      // Stop any current speech before listening
+      speechSynthesis.cancel();
+      setIsSpeaking(false);
+      recognitionRef.current.start();
+    }
+  };
+
+  const toggleAudio = () => {
+    setIsAudioEnabled(!isAudioEnabled);
+    if (!isAudioEnabled && isSpeaking) {
+      speechSynthesis.cancel();
+      setIsSpeaking(false);
+    }
+  };
+
+  const speakText = (text: string) => {
+    if (!isAudioEnabled || !('speechSynthesis' in window)) return;
+
+    // Stop any current speech
+    speechSynthesis.cancel();
+
+    // Clean the text for better speech synthesis
+    const cleanText = text.replace(/\*/g, '').replace(/\[.*?\]/g, '');
+    
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.rate = 0.9;
+    utterance.pitch = 1;
+    utterance.volume = 0.8;
+    
+    // Use a pleasant voice if available
+    const voices = speechSynthesis.getVoices();
+    const preferredVoice = voices.find(voice => 
+      voice.name.includes('Google') || 
+      voice.name.includes('Microsoft') ||
+      voice.lang.startsWith('en')
+    );
+    if (preferredVoice) {
+      utterance.voice = preferredVoice;
+    }
+
+    utterance.onstart = () => setIsSpeaking(true);
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+
+    speechSynthesisRef.current = utterance;
+    speechSynthesis.speak(utterance);
   };
 
   const togglePrivateMode = () => {
@@ -391,6 +497,11 @@ const ConversationCoach: React.FC<ConversationCoachProps> = ({
                   Private Mode
                 </Badge>
               )}
+              {isSpeaking && (
+                <Badge className="text-xs font-medium bg-orange-900/50 text-orange-200 border-orange-700">
+                  🔊 Speaking
+                </Badge>
+              )}
             </div>
             {conversationContext && (
               <p className="text-xs text-slate-400 mt-1 max-w-md truncate">
@@ -410,6 +521,15 @@ const ConversationCoach: React.FC<ConversationCoachProps> = ({
               </span>
             </div>
           </div>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={toggleAudio}
+            className={`px-3 py-2 border-slate-600 text-slate-200 hover:bg-slate-700 ${isAudioEnabled ? 'bg-blue-900/30 border-blue-600 text-blue-300' : ''}`}
+          >
+            {isAudioEnabled ? <Volume2 className="w-4 h-4 mr-2" /> : <VolumeX className="w-4 h-4 mr-2" />}
+            Audio {isAudioEnabled ? 'On' : 'Off'}
+          </Button>
           <Button 
             variant="outline" 
             size="sm" 
@@ -443,6 +563,7 @@ const ConversationCoach: React.FC<ConversationCoachProps> = ({
               <span>🎯 Goal: {conversationContext.conversationGoal}</span>
               <span>📍 {conversationContext.setting}</span>
               <span>🕐 {conversationContext.timeOfDay}</span>
+              {isAudioEnabled && <span>🎤 Voice conversation enabled</span>}
             </div>
             <span className="text-purple-300">✨ Each conversation is completely unique</span>
           </div>
@@ -539,19 +660,20 @@ const ConversationCoach: React.FC<ConversationCoachProps> = ({
             <Input
               value={currentInput}
               onChange={(e) => setCurrentInput(e.target.value)}
-              placeholder="Type your response... Every conversation is unique! 🌟"
+              placeholder={isListening ? "🎤 Listening..." : "Type or speak your response... 🌟"}
               onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
               className="pr-14 py-3 text-base bg-slate-700 border-slate-600 text-slate-100 placeholder:text-slate-400 focus:border-blue-400 focus:ring-blue-400/20"
-              disabled={isTyping}
+              disabled={isTyping || isListening}
             />
             <Button
               size="sm"
               variant="ghost"
-              className="absolute right-2 top-1/2 transform -translate-y-1/2 hover:bg-slate-600 text-slate-400 hover:text-slate-200"
+              className={`absolute right-2 top-1/2 transform -translate-y-1/2 hover:bg-slate-600 text-slate-400 hover:text-slate-200 ${isListening ? 'text-red-400 bg-red-900/30' : ''}`}
               onClick={toggleListening}
+              disabled={isTyping || isSpeaking}
             >
               {isListening ? (
-                <Mic className="w-4 h-4 text-red-400" />
+                <Mic className="w-4 h-4 animate-pulse" />
               ) : (
                 <MicOff className="w-4 h-4" />
               )}
@@ -559,7 +681,7 @@ const ConversationCoach: React.FC<ConversationCoachProps> = ({
           </div>
           <Button 
             onClick={handleSendMessage} 
-            disabled={!currentInput.trim() || isTyping}
+            disabled={!currentInput.trim() || isTyping || isListening}
             className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg hover:scale-105 transition-all duration-200"
           >
             <Send className="w-4 h-4" />
@@ -571,6 +693,9 @@ const ConversationCoach: React.FC<ConversationCoachProps> = ({
             <p>Turn {conversationTurn} • Building unique conversation skills! 💪</p>
             {conversationContext && (
               <p>Currently: {conversationContext.mood} conversation</p>
+            )}
+            {isAudioEnabled && (
+              <p className="text-blue-400">🎤 Voice mode active - Click mic to speak!</p>
             )}
             {isPrivateMode && (
               <div className="flex items-center gap-1 text-green-400">
