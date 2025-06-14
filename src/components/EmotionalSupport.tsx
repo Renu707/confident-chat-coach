@@ -1,9 +1,11 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
+import { Progress } from '@/components/ui/progress';
 import { 
   Heart, 
   Phone, 
@@ -16,7 +18,11 @@ import {
   Brain,
   MapPin,
   Calendar,
-  BookHeart
+  BookHeart,
+  Play,
+  Pause,
+  Check,
+  Timer
 } from 'lucide-react';
 
 interface EmotionalSupportProps {
@@ -26,6 +32,18 @@ interface EmotionalSupportProps {
 const EmotionalSupport: React.FC<EmotionalSupportProps> = ({ onBack }) => {
   const [selectedMood, setSelectedMood] = useState<string>('');
   const [showCrisisResources, setShowCrisisResources] = useState(false);
+  const [currentAffirmation, setCurrentAffirmation] = useState(0);
+  const [joinedGroups, setJoinedGroups] = useState<string[]>([]);
+  const [selfCareSession, setSelfCareSession] = useState<string>('');
+  const [sessionActive, setSessionActive] = useState(false);
+  const [sessionTime, setSessionTime] = useState(0);
+  const [journalEntry, setJournalEntry] = useState('');
+  const [weeklyProgress, setWeeklyProgress] = useState(65);
+  const [dailyGoals, setDailyGoals] = useState([
+    { id: 1, text: "Practice one affirmation", completed: false },
+    { id: 2, text: "Check in with emotions", completed: false },
+    { id: 3, text: "Take 5 deep breaths", completed: false }
+  ]);
 
   const dailyAffirmations = [
     "🌟 Your voice has unique value and deserves to be heard",
@@ -67,6 +85,7 @@ const EmotionalSupport: React.FC<EmotionalSupportProps> = ({ onBack }) => {
 
   const supportGroups = [
     {
+      id: "stuttering",
       name: "Stuttering Support Circle",
       members: "2,847 members",
       description: "Safe space for people who stutter to share experiences",
@@ -74,6 +93,7 @@ const EmotionalSupport: React.FC<EmotionalSupportProps> = ({ onBack }) => {
       type: "stuttering"
     },
     {
+      id: "anxiety",
       name: "Social Anxiety Warriors",
       members: "5,129 members", 
       description: "Overcome social anxiety together with understanding peers",
@@ -81,6 +101,7 @@ const EmotionalSupport: React.FC<EmotionalSupportProps> = ({ onBack }) => {
       type: "anxiety"
     },
     {
+      id: "overthinking",
       name: "Overthinking Anonymous",
       members: "3,234 members",
       description: "Break free from analysis paralysis in conversation",
@@ -88,6 +109,7 @@ const EmotionalSupport: React.FC<EmotionalSupportProps> = ({ onBack }) => {
       type: "overthinking"
     },
     {
+      id: "confidence",
       name: "Confidence Builders United",
       members: "4,567 members",
       description: "Building communication confidence one conversation at a time",
@@ -95,6 +117,108 @@ const EmotionalSupport: React.FC<EmotionalSupportProps> = ({ onBack }) => {
       type: "confidence"
     }
   ];
+
+  const selfCareTools = [
+    {
+      id: "breathing",
+      title: "Breathing Exercises",
+      description: "Calm your nervous system with guided breathing techniques",
+      duration: 300, // 5 minutes
+      icon: "🫁",
+      color: "from-cyan-900/40 to-blue-900/40",
+      border: "border-cyan-700/50",
+      text: "text-cyan-300"
+    },
+    {
+      id: "meditation",
+      title: "Mindfulness Meditations", 
+      description: "5-minute guided meditations for communication anxiety",
+      duration: 300,
+      icon: "🧘‍♀️",
+      color: "from-purple-900/40 to-indigo-900/40",
+      border: "border-purple-700/50", 
+      text: "text-purple-300"
+    },
+    {
+      id: "grounding",
+      title: "Grounding Techniques",
+      description: "5-4-3-2-1 sensory grounding and other present-moment tools",
+      duration: 180,
+      icon: "🌱",
+      color: "from-green-900/40 to-emerald-900/40",
+      border: "border-green-700/50",
+      text: "text-green-300"
+    }
+  ];
+
+  // Timer effect for self-care sessions
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (sessionActive) {
+      interval = setInterval(() => {
+        setSessionTime(prev => prev + 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [sessionActive]);
+
+  const handleMoodSelection = (mood: string) => {
+    setSelectedMood(mood);
+    // Update daily goals
+    setDailyGoals(prev => 
+      prev.map(goal => 
+        goal.id === 2 ? { ...goal, completed: true } : goal
+      )
+    );
+  };
+
+  const handleJoinGroup = (groupId: string) => {
+    if (!joinedGroups.includes(groupId)) {
+      setJoinedGroups(prev => [...prev, groupId]);
+    }
+  };
+
+  const startSelfCareSession = (toolId: string) => {
+    setSelfCareSession(toolId);
+    setSessionActive(true);
+    setSessionTime(0);
+  };
+
+  const endSelfCareSession = () => {
+    setSessionActive(false);
+    setSelfCareSession('');
+    setSessionTime(0);
+    // Update daily goals
+    setDailyGoals(prev => 
+      prev.map(goal => 
+        goal.id === 3 ? { ...goal, completed: true } : goal
+      )
+    );
+  };
+
+  const nextAffirmation = () => {
+    setCurrentAffirmation((prev) => (prev + 1) % dailyAffirmations.length);
+    // Update daily goals
+    setDailyGoals(prev => 
+      prev.map(goal => 
+        goal.id === 1 ? { ...goal, completed: true } : goal
+      )
+    );
+  };
+
+  const toggleGoalCompletion = (goalId: number) => {
+    setDailyGoals(prev => 
+      prev.map(goal => 
+        goal.id === goalId ? { ...goal, completed: !goal.completed } : goal
+      )
+    );
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-950 via-purple-950 to-indigo-950">
@@ -152,6 +276,12 @@ const EmotionalSupport: React.FC<EmotionalSupportProps> = ({ onBack }) => {
                     </div>
                     <p className="text-lg font-mono text-yellow-300 mb-2">{resource.contact}</p>
                     <p className="text-sm text-gray-300">{resource.description}</p>
+                    <Button 
+                      className="mt-2 bg-green-600 hover:bg-green-700 text-white"
+                      onClick={() => window.open(`tel:${resource.contact.replace(/[^0-9]/g, '')}`, '_self')}
+                    >
+                      Call Now
+                    </Button>
                   </div>
                 ))}
                 <div className="flex justify-end pt-4">
@@ -167,6 +297,38 @@ const EmotionalSupport: React.FC<EmotionalSupportProps> = ({ onBack }) => {
             </Card>
           </div>
         )}
+
+        {/* Daily Progress Tracker */}
+        <Card className="mb-6 bg-gradient-to-r from-emerald-900/40 to-green-900/40 border-emerald-700/50">
+          <CardHeader>
+            <CardTitle className="text-emerald-300">Today's Wellness Journey</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-emerald-200">Weekly Progress</span>
+              <span className="text-emerald-300 font-semibold">{weeklyProgress}%</span>
+            </div>
+            <Progress value={weeklyProgress} className="mb-4" />
+            
+            <div className="space-y-2">
+              {dailyGoals.map((goal) => (
+                <div key={goal.id} className="flex items-center space-x-3">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => toggleGoalCompletion(goal.id)}
+                    className={`p-1 ${goal.completed ? 'text-green-400' : 'text-emerald-400'}`}
+                  >
+                    <Check className={`w-4 h-4 ${goal.completed ? 'opacity-100' : 'opacity-30'}`} />
+                  </Button>
+                  <span className={`text-emerald-200 ${goal.completed ? 'line-through opacity-75' : ''}`}>
+                    {goal.text}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
 
         <Tabs defaultValue="daily-support" className="space-y-6">
           <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 bg-purple-900/60 border border-purple-700">
@@ -189,24 +351,28 @@ const EmotionalSupport: React.FC<EmotionalSupportProps> = ({ onBack }) => {
           </TabsList>
 
           <TabsContent value="daily-support" className="space-y-6">
-            {/* Daily Affirmations */}
+            {/* Interactive Daily Affirmations */}
             <Card className="bg-gradient-to-r from-pink-900/40 to-purple-900/40 border-pink-700/50">
               <CardHeader>
                 <CardTitle className="text-pink-300 flex items-center">
                   <Star className="w-5 h-5 mr-2" />
-                  Your Daily Affirmations 💕
+                  Your Daily Affirmation 💕
                 </CardTitle>
               </CardHeader>
-              <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {dailyAffirmations.map((affirmation, index) => (
-                  <div key={index} className="p-4 bg-pink-900/30 rounded-lg border border-pink-800/50">
-                    <p className="text-pink-200 text-center font-medium">{affirmation}</p>
-                  </div>
-                ))}
+              <CardContent className="text-center space-y-4">
+                <div className="p-6 bg-pink-900/30 rounded-lg border border-pink-800/50 min-h-[100px] flex items-center justify-center">
+                  <p className="text-pink-200 text-lg font-medium">{dailyAffirmations[currentAffirmation]}</p>
+                </div>
+                <Button 
+                  onClick={nextAffirmation}
+                  className="bg-pink-600 hover:bg-pink-700 text-white"
+                >
+                  New Affirmation ✨
+                </Button>
               </CardContent>
             </Card>
 
-            {/* Mood Check-in */}
+            {/* Interactive Mood Check-in */}
             <Card className="bg-gradient-to-r from-purple-900/40 to-blue-900/40 border-purple-700/50">
               <CardHeader>
                 <CardTitle className="text-purple-300">How are you feeling today? 🤗</CardTitle>
@@ -222,7 +388,7 @@ const EmotionalSupport: React.FC<EmotionalSupportProps> = ({ onBack }) => {
                     <Button
                       key={mood.label}
                       variant={selectedMood === mood.label ? "default" : "outline"}
-                      onClick={() => setSelectedMood(mood.label)}
+                      onClick={() => handleMoodSelection(mood.label)}
                       className={`p-4 h-auto flex-col space-y-2 ${selectedMood === mood.label ? 'bg-purple-600' : 'border-purple-600 text-purple-300 hover:bg-purple-800'}`}
                     >
                       <span className="text-2xl">{mood.emoji}</span>
@@ -240,6 +406,18 @@ const EmotionalSupport: React.FC<EmotionalSupportProps> = ({ onBack }) => {
                     </p>
                   </div>
                 )}
+                
+                {/* Journal Entry */}
+                <div className="mt-6">
+                  <label className="block text-purple-300 mb-2">Optional: Share what's on your mind</label>
+                  <Textarea
+                    value={journalEntry}
+                    onChange={(e) => setJournalEntry(e.target.value)}
+                    placeholder="Sometimes writing helps..."
+                    className="bg-purple-900/30 border-purple-700 text-purple-200 placeholder:text-purple-400"
+                    rows={3}
+                  />
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -254,8 +432,8 @@ const EmotionalSupport: React.FC<EmotionalSupportProps> = ({ onBack }) => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {supportGroups.map((group, index) => (
-                <Card key={index} className="bg-gradient-to-r from-indigo-900/40 to-purple-900/40 border-indigo-700/50">
+              {supportGroups.map((group) => (
+                <Card key={group.id} className="bg-gradient-to-r from-indigo-900/40 to-purple-900/40 border-indigo-700/50">
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-indigo-300">{group.name}</CardTitle>
@@ -268,43 +446,23 @@ const EmotionalSupport: React.FC<EmotionalSupportProps> = ({ onBack }) => {
                       <Calendar className="w-4 h-4 mr-2" />
                       Next meeting: {group.nextMeeting}
                     </div>
-                    <Button className="w-full bg-indigo-600 hover:bg-indigo-700 text-white">
-                      Join Group 💬
+                    <Button 
+                      onClick={() => handleJoinGroup(group.id)}
+                      className={`w-full ${joinedGroups.includes(group.id) ? 'bg-green-600 hover:bg-green-700' : 'bg-indigo-600 hover:bg-indigo-700'} text-white`}
+                    >
+                      {joinedGroups.includes(group.id) ? (
+                        <>
+                          <Check className="w-4 h-4 mr-2" />
+                          Joined! 💬
+                        </>
+                      ) : (
+                        'Join Group 💬'
+                      )}
                     </Button>
                   </CardContent>
                 </Card>
               ))}
             </div>
-
-            {/* Community Guidelines */}
-            <Card className="bg-gradient-to-r from-green-900/40 to-emerald-900/40 border-green-700/50">
-              <CardHeader>
-                <CardTitle className="text-green-300 flex items-center">
-                  <Shield className="w-5 h-5 mr-2" />
-                  Safe Community Promise
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="flex items-start space-x-3">
-                    <div className="w-2 h-2 bg-green-400 rounded-full mt-2"></div>
-                    <p className="text-green-200">Zero tolerance for judgment or mockery</p>
-                  </div>
-                  <div className="flex items-start space-x-3">
-                    <div className="w-2 h-2 bg-green-400 rounded-full mt-2"></div>
-                    <p className="text-green-200">Professional moderation 24/7</p>
-                  </div>
-                  <div className="flex items-start space-x-3">
-                    <div className="w-2 h-2 bg-green-400 rounded-full mt-2"></div>
-                    <p className="text-green-200">Inclusive and respectful language</p>
-                  </div>
-                  <div className="flex items-start space-x-3">
-                    <div className="w-2 h-2 bg-green-400 rounded-full mt-2"></div>
-                    <p className="text-green-200">Trauma-informed community guidelines</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
           </TabsContent>
 
           <TabsContent value="professional-help" className="space-y-6">
@@ -333,7 +491,10 @@ const EmotionalSupport: React.FC<EmotionalSupportProps> = ({ onBack }) => {
                       Telehealth options available
                     </div>
                   </div>
-                  <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white">
+                  <Button 
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                    onClick={() => window.open('https://www.asha.org/profind/', '_blank')}
+                  >
                     Find SLP Near You
                   </Button>
                 </CardContent>
@@ -355,7 +516,10 @@ const EmotionalSupport: React.FC<EmotionalSupportProps> = ({ onBack }) => {
                       Same-week appointments
                     </div>
                   </div>
-                  <Button className="w-full bg-purple-600 hover:bg-purple-700 text-white">
+                  <Button 
+                    className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+                    onClick={() => window.open('https://www.psychologytoday.com/us/therapists', '_blank')}
+                  >
                     Find Therapist
                   </Button>
                 </CardContent>
@@ -377,7 +541,10 @@ const EmotionalSupport: React.FC<EmotionalSupportProps> = ({ onBack }) => {
                       Peer support programs
                     </div>
                   </div>
-                  <Button className="w-full bg-green-600 hover:bg-green-700 text-white">
+                  <Button 
+                    className="w-full bg-green-600 hover:bg-green-700 text-white"
+                    onClick={() => window.open('https://www.nami.org/Support-Education/Support-Groups', '_blank')}
+                  >
                     Find Local Groups
                   </Button>
                 </CardContent>
@@ -394,58 +561,33 @@ const EmotionalSupport: React.FC<EmotionalSupportProps> = ({ onBack }) => {
               </p>
             </div>
 
+            {/* Active Session Display */}
+            {sessionActive && (
+              <Card className="bg-gradient-to-r from-yellow-900/40 to-orange-900/40 border-yellow-700/50 mb-6">
+                <CardContent className="p-6">
+                  <div className="text-center space-y-4">
+                    <h3 className="text-yellow-300 text-xl font-semibold">
+                      {selfCareTools.find(tool => tool.id === selfCareSession)?.title} Session Active
+                    </h3>
+                    <div className="flex items-center justify-center space-x-4">
+                      <Timer className="w-6 h-6 text-yellow-300" />
+                      <span className="text-2xl font-mono text-yellow-200">{formatTime(sessionTime)}</span>
+                    </div>
+                    <Button 
+                      onClick={endSelfCareSession}
+                      className="bg-red-600 hover:bg-red-700 text-white"
+                    >
+                      <Pause className="w-4 h-4 mr-2" />
+                      End Session
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[
-                {
-                  title: "Breathing Exercises",
-                  description: "Calm your nervous system with guided breathing techniques",
-                  icon: "🫁",
-                  color: "from-cyan-900/40 to-blue-900/40",
-                  border: "border-cyan-700/50",
-                  text: "text-cyan-300"
-                },
-                {
-                  title: "Mindfulness Meditations", 
-                  description: "5-minute guided meditations for communication anxiety",
-                  icon: "🧘‍♀️",
-                  color: "from-purple-900/40 to-indigo-900/40",
-                  border: "border-purple-700/50", 
-                  text: "text-purple-300"
-                },
-                {
-                  title: "Grounding Techniques",
-                  description: "5-4-3-2-1 sensory grounding and other present-moment tools",
-                  icon: "🌱",
-                  color: "from-green-900/40 to-emerald-900/40",
-                  border: "border-green-700/50",
-                  text: "text-green-300"
-                },
-                {
-                  title: "Progressive Relaxation",
-                  description: "Release physical tension that builds up from communication stress",
-                  icon: "😌",
-                  color: "from-pink-900/40 to-rose-900/40", 
-                  border: "border-pink-700/50",
-                  text: "text-pink-300"
-                },
-                {
-                  title: "Comfort Visualization",
-                  description: "Imagine your safe space and successful conversations",
-                  icon: "☁️",
-                  color: "from-blue-900/40 to-slate-900/40",
-                  border: "border-blue-700/50",
-                  text: "text-blue-300"
-                },
-                {
-                  title: "Gentle Movement",
-                  description: "Simple stretches and movement for when you feel stuck",
-                  icon: "🤸‍♀️",
-                  color: "from-orange-900/40 to-red-900/40",
-                  border: "border-orange-700/50",
-                  text: "text-orange-300"
-                }
-              ].map((tool, index) => (
-                <Card key={index} className={`bg-gradient-to-r ${tool.color} ${tool.border}`}>
+              {selfCareTools.map((tool) => (
+                <Card key={tool.id} className={`bg-gradient-to-r ${tool.color} ${tool.border}`}>
                   <CardHeader>
                     <CardTitle className={`${tool.text} flex items-center`}>
                       <span className="text-2xl mr-3">{tool.icon}</span>
@@ -454,7 +596,13 @@ const EmotionalSupport: React.FC<EmotionalSupportProps> = ({ onBack }) => {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <p className={`${tool.text.replace('300', '200')}`}>{tool.description}</p>
-                    <Button className={`w-full bg-gradient-to-r ${tool.color.replace('/40', '')} text-white hover:opacity-90`}>
+                    <p className="text-sm opacity-75">Duration: {Math.floor(tool.duration / 60)} minutes</p>
+                    <Button 
+                      onClick={() => startSelfCareSession(tool.id)}
+                      disabled={sessionActive}
+                      className={`w-full ${sessionActive ? 'opacity-50 cursor-not-allowed' : ''} bg-gradient-to-r ${tool.color.replace('/40', '')} text-white hover:opacity-90`}
+                    >
+                      <Play className="w-4 h-4 mr-2" />
                       Start Session
                     </Button>
                   </CardContent>
