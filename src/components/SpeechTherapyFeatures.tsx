@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -614,7 +615,7 @@ const SpeechTherapyFeatures: React.FC<SpeechTherapyFeaturesProps> = ({
     }
 
     // Overall assessment
-    const overallScore = Math.max(0, 100 - (fillerRatio * 30) - (repetitionRatio * 20) - Math.abs(wordsPerMinute - 150) / 2;
+    const overallScore = Math.max(0, 100 - (fillerRatio * 30) - (repetitionRatio * 20) - Math.abs(wordsPerMinute - 150) / 2);
     
     if (overallScore >= 80) {
       feedback.overall = '🌟 Excellent fluency! Your speech is clear, well-paced, and engaging.';
