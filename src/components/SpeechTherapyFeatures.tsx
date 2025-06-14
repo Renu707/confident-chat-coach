@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -53,6 +52,7 @@ interface ExerciseSession {
   spokenText: string;
   fluencyScore: number;
   coherenceScore: number;
+  currentTargetProgress: number; // Progress for current word/sentence
 }
 
 interface AudioAnalysisData {
@@ -112,6 +112,7 @@ const SpeechTherapyFeatures: React.FC<SpeechTherapyFeaturesProps> = ({
   const microphoneRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const animationFrameRef = useRef<number>();
+  const speechStartTimeRef = useRef<number>(0);
 
   const exerciseTargets = {
     'gentle-onset': {
@@ -217,7 +218,14 @@ const SpeechTherapyFeatures: React.FC<SpeechTherapyFeaturesProps> = ({
         
         if (currentSession && event.results[0].isFinal) {
           analyzeSpokenText(transcript);
+        } else if (currentSession && !event.results[0].isFinal) {
+          // Update progress dynamically for interim results
+          updateDynamicProgress(transcript);
         }
+      };
+
+      recognitionRef.current!.onstart = () => {
+        speechStartTimeRef.current = Date.now();
       };
     }
 
@@ -227,7 +235,46 @@ const SpeechTherapyFeatures: React.FC<SpeechTherapyFeaturesProps> = ({
         recognitionRef.current.stop();
       }
     };
-  }, []);
+  }, [currentSession]);
+
+  const updateDynamicProgress = (interimTranscript: string) => {
+    if (!currentSession) return;
+
+    const currentTarget = getCurrentTarget();
+    const targetWords = currentTarget.toLowerCase().split(' ');
+    const spokenWords = interimTranscript.toLowerCase().split(' ');
+    
+    // Calculate how many words match
+    let matchedWords = 0;
+    spokenWords.forEach((word, index) => {
+      if (index < targetWords.length && targetWords[index].includes(word.replace(/[.,!?]/g, ''))) {
+        matchedWords++;
+      }
+    });
+
+    // Calculate progress for current target (0-100%)
+    const currentTargetProgress = Math.min(100, (matchedWords / targetWords.length) * 100);
+    
+    // Update session with current target progress
+    setCurrentSession(prev => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        currentTargetProgress
+      };
+    });
+
+    // Update overall exercise progress
+    const exercise = exerciseTargets[currentSession.id as keyof typeof exerciseTargets];
+    const totalTargets = exercise.words.length + 
+                        (exercise.longSentences?.length || 0) + 
+                        (exercise.paragraphs?.length || 0);
+    
+    const completedTargets = currentSession.currentWordIndex;
+    const overallProgress = ((completedTargets + (currentTargetProgress / 100)) / totalTargets) * 100;
+    
+    setExerciseProgress(Math.min(100, overallProgress));
+  };
 
   const startAudioAnalysis = async () => {
     try {
@@ -288,11 +335,20 @@ const SpeechTherapyFeatures: React.FC<SpeechTherapyFeaturesProps> = ({
     // Estimate speech clarity based on frequency distribution
     const clarity = calculateClarity(dataArray);
     
+    // Calculate speech rate based on time elapsed
+    const timeElapsed = Date.now() - speechStartTimeRef.current;
+    const estimatedWPM = currentSession ? 
+      Math.round((currentSession.spokenText.split(' ').length / timeElapsed) * 60000) : 0;
+    
     setAudioAnalysis(prev => ({
       ...prev,
       volume: Math.min(100, (volume / 128) * 100),
       frequency,
-      clarity
+      clarity,
+      fluencyMetrics: {
+        ...prev.fluencyMetrics,
+        wordsPerMinute: estimatedWPM
+      }
     }));
 
     // Provide real-time feedback
@@ -341,9 +397,7 @@ const SpeechTherapyFeatures: React.FC<SpeechTherapyFeaturesProps> = ({
     if (!currentSession) return;
 
     const exercise = exerciseTargets[currentSession.id as keyof typeof exerciseTargets];
-    const currentTarget = exercise.words[currentSession.currentWordIndex] || 
-                         exercise.longSentences?.[currentSession.currentWordIndex - exercise.words.length] ||
-                         exercise.paragraphs?.[currentSession.currentWordIndex - exercise.words.length - (exercise.longSentences?.length || 0)];
+    const currentTarget = getCurrentTarget();
     
     // Update spoken text for analysis
     setCurrentSession(prev => {
@@ -380,7 +434,8 @@ const SpeechTherapyFeatures: React.FC<SpeechTherapyFeaturesProps> = ({
         
         return {
           ...prev,
-          currentWordIndex: newIndex
+          currentWordIndex: newIndex,
+          currentTargetProgress: 0 // Reset progress for next target
         };
       });
       
@@ -434,7 +489,8 @@ const SpeechTherapyFeatures: React.FC<SpeechTherapyFeaturesProps> = ({
       },
       spokenText: '',
       fluencyScore: 0,
-      coherenceScore: 0
+      coherenceScore: 0,
+      currentTargetProgress: 0
     });
 
     setExerciseProgress(0);
@@ -464,6 +520,114 @@ const SpeechTherapyFeatures: React.FC<SpeechTherapyFeaturesProps> = ({
     setCurrentSession(null);
     setExerciseProgress(0);
     setRealTimeFeedback('');
+  };
+
+  const getCurrentTarget = () => {
+    if (!currentSession) return '';
+    
+    const exercise = exerciseTargets[currentSession.id as keyof typeof exerciseTargets];
+    const index = currentSession.currentWordIndex;
+    
+    if (index < exercise.words.length) {
+      return exercise.words[index];
+    } else if (exercise.longSentences && index < exercise.words.length + exercise.longSentences.length) {
+      return exercise.longSentences[index - exercise.words.length];
+    } else if (exercise.paragraphs) {
+      return exercise.paragraphs[index - exercise.words.length - (exercise.longSentences?.length || 0)];
+    }
+    
+    return '';
+  };
+
+  const getCurrentTargetType = () => {
+    if (!currentSession) return 'word';
+    
+    const exercise = exerciseTargets[currentSession.id as keyof typeof exerciseTargets];
+    const index = currentSession.currentWordIndex;
+    
+    if (index < exercise.words.length) {
+      return 'word';
+    } else if (exercise.longSentences && index < exercise.words.length + exercise.longSentences.length) {
+      return 'sentence';
+    } else {
+      return 'paragraph';
+    }
+  };
+
+  const provideDetailedFeedback = (session: ExerciseSession) => {
+    if (!session.spokenText) return;
+
+    const duration = Date.now() - session.startTime;
+    const feedback = analyzeFluency(session.spokenText, duration);
+    setFluencyFeedback(feedback);
+  };
+
+  const analyzeFluency = (spokenText: string, duration: number): FluencyFeedback => {
+    const words = spokenText.toLowerCase().split(/\s+/).filter(word => word.length > 0);
+    const wordsPerMinute = Math.round((words.length / duration) * 60000);
+    
+    // Detect filler words
+    const fillerWords = ['um', 'uh', 'like', 'you know', 'so', 'well', 'actually', 'basically'];
+    const fillerCount = words.filter(word => fillerWords.includes(word.replace(/[.,!?]/, ''))).length;
+    
+    // Detect repetitions
+    const repetitions = words.filter((word, index) => word === words[index + 1]).length;
+    
+    // Calculate fluency metrics
+    const fillerRatio = fillerCount / Math.max(words.length, 1);
+    const repetitionRatio = repetitions / Math.max(words.length, 1);
+    
+    // Generate feedback
+    const feedback: FluencyFeedback = {
+      overall: '',
+      pace: '',
+      clarity: '',
+      pauses: '',
+      suggestions: [],
+      strengths: []
+    };
+
+    // Pace analysis
+    if (wordsPerMinute < 120) {
+      feedback.pace = 'Your speaking pace is quite slow. Try to increase your speed slightly for more natural flow.';
+      feedback.suggestions.push('Practice reading aloud to increase your natural speaking pace');
+    } else if (wordsPerMinute > 180) {
+      feedback.pace = 'You\'re speaking quite fast. Slow down to ensure clarity and comprehension.';
+      feedback.suggestions.push('Take deeper breaths and pause between sentences');
+    } else {
+      feedback.pace = 'Excellent pace! Your speaking speed is natural and easy to follow.';
+      feedback.strengths.push('Great natural speaking rhythm');
+    }
+
+    // Filler word analysis
+    if (fillerRatio > 0.1) {
+      feedback.suggestions.push('Reduce filler words by pausing instead of saying "um" or "uh"');
+    } else if (fillerRatio < 0.05) {
+      feedback.strengths.push('Minimal use of filler words - very professional!');
+    }
+
+    // Repetition analysis
+    if (repetitionRatio > 0.05) {
+      feedback.suggestions.push('Avoid repeating words - take a moment to organize your thoughts');
+    } else {
+      feedback.strengths.push('Clear and concise expression without unnecessary repetition');
+    }
+
+    // Overall assessment
+    const overallScore = Math.max(0, 100 - (fillerRatio * 30) - (repetitionRatio * 20) - Math.abs(wordsPerMinute - 150) / 2;
+    
+    if (overallScore >= 80) {
+      feedback.overall = '🌟 Excellent fluency! Your speech is clear, well-paced, and engaging.';
+    } else if (overallScore >= 60) {
+      feedback.overall = '👍 Good fluency with room for improvement in specific areas.';
+    } else {
+      feedback.overall = '💪 Keep practicing! Focus on the suggestions to improve your fluency.';
+    }
+
+    feedback.clarity = `Speech clarity: ${Math.round(audioAnalysis.clarity)}% - ${audioAnalysis.clarity > 70 ? 'Excellent' : audioAnalysis.clarity > 50 ? 'Good' : 'Needs improvement'}`;
+    feedback.pauses = `Pause frequency: ${wordTimestamps.length > 1 ? 'Natural' : 'Consider adding more pauses'}`;
+
+    return feedback;
   };
 
   const stutterExercises = [
@@ -605,114 +769,6 @@ const SpeechTherapyFeatures: React.FC<SpeechTherapyFeaturesProps> = ({
     }
   };
 
-  const getCurrentTarget = () => {
-    if (!currentSession) return '';
-    
-    const exercise = exerciseTargets[currentSession.id as keyof typeof exerciseTargets];
-    const index = currentSession.currentWordIndex;
-    
-    if (index < exercise.words.length) {
-      return exercise.words[index];
-    } else if (exercise.longSentences && index < exercise.words.length + exercise.longSentences.length) {
-      return exercise.longSentences[index - exercise.words.length];
-    } else if (exercise.paragraphs) {
-      return exercise.paragraphs[index - exercise.words.length - (exercise.longSentences?.length || 0)];
-    }
-    
-    return '';
-  };
-
-  const getCurrentTargetType = () => {
-    if (!currentSession) return 'word';
-    
-    const exercise = exerciseTargets[currentSession.id as keyof typeof exerciseTargets];
-    const index = currentSession.currentWordIndex;
-    
-    if (index < exercise.words.length) {
-      return 'word';
-    } else if (exercise.longSentences && index < exercise.words.length + exercise.longSentences.length) {
-      return 'sentence';
-    } else {
-      return 'paragraph';
-    }
-  };
-
-  const provideDetailedFeedback = (session: ExerciseSession) => {
-    if (!session.spokenText) return;
-
-    const duration = Date.now() - session.startTime;
-    const feedback = analyzeFluency(session.spokenText, duration);
-    setFluencyFeedback(feedback);
-  };
-
-  const analyzeFluency = (spokenText: string, duration: number): FluencyFeedback => {
-    const words = spokenText.toLowerCase().split(/\s+/).filter(word => word.length > 0);
-    const wordsPerMinute = Math.round((words.length / duration) * 60000);
-    
-    // Detect filler words
-    const fillerWords = ['um', 'uh', 'like', 'you know', 'so', 'well', 'actually', 'basically'];
-    const fillerCount = words.filter(word => fillerWords.includes(word.replace(/[.,!?]/, ''))).length;
-    
-    // Detect repetitions
-    const repetitions = words.filter((word, index) => word === words[index + 1]).length;
-    
-    // Calculate fluency metrics
-    const fillerRatio = fillerCount / Math.max(words.length, 1);
-    const repetitionRatio = repetitions / Math.max(words.length, 1);
-    
-    // Generate feedback
-    const feedback: FluencyFeedback = {
-      overall: '',
-      pace: '',
-      clarity: '',
-      pauses: '',
-      suggestions: [],
-      strengths: []
-    };
-
-    // Pace analysis
-    if (wordsPerMinute < 120) {
-      feedback.pace = 'Your speaking pace is quite slow. Try to increase your speed slightly for more natural flow.';
-      feedback.suggestions.push('Practice reading aloud to increase your natural speaking pace');
-    } else if (wordsPerMinute > 180) {
-      feedback.pace = 'You\'re speaking quite fast. Slow down to ensure clarity and comprehension.';
-      feedback.suggestions.push('Take deeper breaths and pause between sentences');
-    } else {
-      feedback.pace = 'Excellent pace! Your speaking speed is natural and easy to follow.';
-      feedback.strengths.push('Great natural speaking rhythm');
-    }
-
-    // Filler word analysis
-    if (fillerRatio > 0.1) {
-      feedback.suggestions.push('Reduce filler words by pausing instead of saying "um" or "uh"');
-    } else if (fillerRatio < 0.05) {
-      feedback.strengths.push('Minimal use of filler words - very professional!');
-    }
-
-    // Repetition analysis
-    if (repetitionRatio > 0.05) {
-      feedback.suggestions.push('Avoid repeating words - take a moment to organize your thoughts');
-    } else {
-      feedback.strengths.push('Clear and concise expression without unnecessary repetition');
-    }
-
-    // Overall assessment
-    const overallScore = Math.max(0, 100 - (fillerRatio * 30) - (repetitionRatio * 20) - Math.abs(wordsPerMinute - 150) / 2);
-    
-    if (overallScore >= 80) {
-      feedback.overall = '🌟 Excellent fluency! Your speech is clear, well-paced, and engaging.';
-    } else if (overallScore >= 60) {
-      feedback.overall = '👍 Good fluency with room for improvement in specific areas.';
-    } else {
-      feedback.overall = '💪 Keep practicing! Focus on the suggestions to improve your fluency.';
-    }
-
-    feedback.clarity = `Speech clarity: ${Math.round(audioAnalysis.clarity)}% - ${audioAnalysis.clarity > 70 ? 'Excellent' : audioAnalysis.clarity > 50 ? 'Good' : 'Needs improvement'}`;
-    feedback.pauses = `Pause frequency: ${wordTimestamps.length > 1 ? 'Natural' : 'Consider adding more pauses'}`;
-
-    return feedback;
-  };
-
   const exercises = getExercisesForMode();
 
   return (
@@ -747,7 +803,7 @@ const SpeechTherapyFeatures: React.FC<SpeechTherapyFeaturesProps> = ({
         </Card>
       </div>
 
-      {/* Enhanced Current Exercise Session */}
+      {/* Enhanced Current Exercise Session with Dynamic Progress */}
       {currentSession && (
         <Card className="bg-gradient-to-r from-purple-900/30 to-pink-900/30 border-purple-600/30">
           <CardHeader>
@@ -774,7 +830,7 @@ const SpeechTherapyFeatures: React.FC<SpeechTherapyFeaturesProps> = ({
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {/* Current Target Display */}
+              {/* Current Target Display with Dynamic Progress */}
               <div className="text-center p-6 bg-purple-900/40 rounded-lg border border-purple-600/30">
                 <div className="flex items-center justify-center mb-3">
                   {getCurrentTargetType() === 'word' && <Target className="w-5 h-5 text-purple-400 mr-2" />}
@@ -790,8 +846,18 @@ const SpeechTherapyFeatures: React.FC<SpeechTherapyFeaturesProps> = ({
                 }`}>
                   {getCurrentTarget()}
                 </p>
-                <p className="text-purple-200 text-sm">
+                <p className="text-purple-200 text-sm mb-4">
                   {exerciseTargets[currentSession.id as keyof typeof exerciseTargets]?.instructions}
+                </p>
+                {/* Dynamic Progress for Current Target */}
+                <div className="w-full bg-purple-900/30 rounded-full h-2 mb-2">
+                  <div 
+                    className="bg-gradient-to-r from-purple-400 to-pink-400 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${currentSession.currentTargetProgress || 0}%` }}
+                  ></div>
+                </div>
+                <p className="text-purple-300 text-xs">
+                  Current target: {Math.round(currentSession.currentTargetProgress || 0)}% complete
                 </p>
               </div>
 
@@ -827,7 +893,7 @@ const SpeechTherapyFeatures: React.FC<SpeechTherapyFeaturesProps> = ({
                 <Card className="bg-slate-800/60 border-slate-600">
                   <CardContent className="p-4 text-center">
                     <Timer className="w-6 h-6 text-purple-400 mx-auto mb-2" />
-                    <p className="text-slate-300 text-sm">Progress</p>
+                    <p className="text-slate-300 text-sm">Overall Progress</p>
                     <Progress value={exerciseProgress} className="mt-2" />
                     <p className="text-purple-400 text-xs mt-1">
                       {currentSession.currentWordIndex + 1}/
