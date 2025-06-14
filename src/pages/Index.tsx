@@ -125,6 +125,24 @@ const Index = () => {
               <Button 
                 variant="outline" 
                 size="lg"
+                onClick={() => setCurrentState('emotional-support')}
+                className="px-10 py-6 text-lg font-semibold border-2 border-slate-600 hover:border-pink-400 hover:bg-pink-950/50 transition-all duration-300 text-slate-200 hover:text-white"
+              >
+                <Heart className="w-6 h-6 mr-2" />
+                Emotional Support
+              </Button>
+              <Button 
+                variant="outline" 
+                size="lg"
+                onClick={() => setCurrentState('community')}
+                className="px-10 py-6 text-lg font-semibold border-2 border-slate-600 hover:border-purple-400 hover:bg-purple-950/50 transition-all duration-300 text-slate-200 hover:text-white"
+              >
+                <Users className="w-6 h-6 mr-2" />
+                Community
+              </Button>
+              <Button 
+                variant="outline" 
+                size="lg"
                 onClick={() => setCurrentState('progress')}
                 className="px-10 py-6 text-lg font-semibold border-2 border-slate-600 hover:border-blue-400 hover:bg-blue-950/50 transition-all duration-300 text-slate-200 hover:text-white"
               >
@@ -274,6 +292,10 @@ const Index = () => {
         );
       case 'audio-support':
         return <AudioSupport onBack={() => setCurrentState('welcome')} />;
+      case 'emotional-support':
+        return <EmotionalSupport onBack={() => setCurrentState('welcome')} />;
+      case 'community':
+        return <CommunityHub onBack={() => setCurrentState('welcome')} />;
       default:
         return renderWelcomeScreen();
     }
@@ -306,6 +328,22 @@ const Index = () => {
               >
                 <Headphones className="w-4 h-4 mr-2" />
                 Audio Support
+              </Button>
+              <Button 
+                variant="ghost" 
+                onClick={() => setCurrentState('emotional-support')}
+                className={`px-4 py-2 rounded-lg font-medium transition-all ${currentState === 'emotional-support' ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}`}
+              >
+                <Heart className="w-4 h-4 mr-2" />
+                Support
+              </Button>
+              <Button 
+                variant="ghost" 
+                onClick={() => setCurrentState('community')}
+                className={`px-4 py-2 rounded-lg font-medium transition-all ${currentState === 'community' ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}`}
+              >
+                <Users className="w-4 h-4 mr-2" />
+                Community
               </Button>
               <Button 
                 variant="ghost" 
