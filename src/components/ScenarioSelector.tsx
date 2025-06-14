@@ -38,7 +38,7 @@ const scenarios: Scenario[] = [
     difficulty: 'beginner',
     duration: '10-15 min',
     skills: ['Ice breaking', 'Active listening', 'Professional tone'],
-    color: 'bg-blue-50 border-blue-200 hover:bg-blue-100'
+    color: 'bg-slate-800/60 border-slate-600 hover:bg-slate-700/80'
   },
   {
     id: 'casual-social-event',
@@ -48,7 +48,7 @@ const scenarios: Scenario[] = [
     difficulty: 'intermediate',
     duration: '15-20 min',
     skills: ['Group dynamics', 'Finding common ground', 'Humor'],
-    color: 'bg-green-50 border-green-200 hover:bg-green-100'
+    color: 'bg-slate-800/60 border-slate-600 hover:bg-slate-700/80'
   },
   {
     id: 'professional-networking',
@@ -58,7 +58,7 @@ const scenarios: Scenario[] = [
     difficulty: 'advanced',
     duration: '20-25 min',
     skills: ['Elevator pitch', 'Value proposition', 'Follow-up'],
-    color: 'bg-purple-50 border-purple-200 hover:bg-purple-100'
+    color: 'bg-slate-800/60 border-slate-600 hover:bg-slate-700/80'
   },
   {
     id: 'interview-preparation',
@@ -68,7 +68,7 @@ const scenarios: Scenario[] = [
     difficulty: 'intermediate',
     duration: '25-30 min',
     skills: ['Professional presence', 'Storytelling', 'Confidence'],
-    color: 'bg-orange-50 border-orange-200 hover:bg-orange-100'
+    color: 'bg-slate-800/60 border-slate-600 hover:bg-slate-700/80'
   },
   {
     id: 'dating-conversation',
@@ -78,7 +78,7 @@ const scenarios: Scenario[] = [
     difficulty: 'intermediate',
     duration: '15-20 min',
     skills: ['Authenticity', 'Emotional connection', 'Flirting'],
-    color: 'bg-pink-50 border-pink-200 hover:bg-pink-100'
+    color: 'bg-slate-800/60 border-slate-600 hover:bg-slate-700/80'
   }
 ];
 
