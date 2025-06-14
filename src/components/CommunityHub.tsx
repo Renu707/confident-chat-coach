@@ -1,10 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
+import MentorChat from './MentorChat';
 import { 
   Users, 
   MessageCircle, 
@@ -56,6 +56,7 @@ interface ChatMessage {
 
 const CommunityHub: React.FC<CommunityHubProps> = ({ onBack }) => {
   const [newMessage, setNewMessage] = useState('');
+  const [selectedMentor, setSelectedMentor] = useState<any>(null);
   const [challenges, setChallenges] = useState<Challenge[]>([
     {
       id: "morning-greeting",
@@ -139,7 +140,9 @@ const CommunityHub: React.FC<CommunityHubProps> = ({ onBack }) => {
       specialty: "Stuttering & Fluency",
       experience: "15+ years",
       quote: "Every voice deserves to be heard. Your journey is valid, no matter how long it takes.",
-      availableToday: true
+      availableToday: true,
+      rating: 4.9,
+      responseTime: "Usually responds in 5 min"
     },
     {
       name: "Jamie Chen",
@@ -147,7 +150,9 @@ const CommunityHub: React.FC<CommunityHubProps> = ({ onBack }) => {
       specialty: "Social Anxiety",
       experience: "8+ years",
       quote: "I've been where you are. The fear gets smaller, but you get braver.",
-      availableToday: false
+      availableToday: false,
+      rating: 4.8,
+      responseTime: "Usually responds in 2 hours"
     }
   ];
 
@@ -228,6 +233,14 @@ const CommunityHub: React.FC<CommunityHubProps> = ({ onBack }) => {
         }]);
       }, 2000);
     }
+  };
+
+  const openMentorChat = (mentor: any) => {
+    setSelectedMentor(mentor);
+  };
+
+  const closeMentorChat = () => {
+    setSelectedMentor(null);
   };
 
   return (
@@ -416,12 +429,30 @@ const CommunityHub: React.FC<CommunityHubProps> = ({ onBack }) => {
               {mentorSpotlight.map((mentor, index) => (
                 <div key={index} className="p-4 bg-blue-900/30 rounded-lg border border-blue-800/50">
                   <div className="flex items-center justify-between mb-3">
-                    <div>
-                      <h3 className="font-bold text-blue-200">{mentor.name}</h3>
-                      <p className="text-sm text-blue-300">{mentor.role}</p>
+                    <div className="flex items-center space-x-3">
+                      <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold">
+                        {mentor.name.split(' ').map(n => n[0]).join('')}
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-blue-200">{mentor.name}</h3>
+                        <p className="text-sm text-blue-300">{mentor.role}</p>
+                        <div className="flex items-center space-x-2 mt-1">
+                          <div className="flex items-center space-x-1">
+                            <Star className="w-3 h-3 text-yellow-400 fill-current" />
+                            <span className="text-xs text-blue-400">{mentor.rating}</span>
+                          </div>
+                          <div className="flex items-center space-x-1">
+                            <Clock className="w-3 h-3 text-blue-400" />
+                            <span className="text-xs text-blue-400">{mentor.responseTime}</span>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                     {mentor.availableToday && (
-                      <Badge className="bg-green-600 text-white">Available Today</Badge>
+                      <div className="flex items-center space-x-2">
+                        <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                        <Badge className="bg-green-600 text-white text-xs">Available Now</Badge>
+                      </div>
                     )}
                   </div>
                   <div className="space-y-2 mb-4">
@@ -435,12 +466,25 @@ const CommunityHub: React.FC<CommunityHubProps> = ({ onBack }) => {
                   <blockquote className="text-blue-200 italic text-sm mb-4 border-l-2 border-blue-600 pl-3">
                     "{mentor.quote}"
                   </blockquote>
-                  <Button 
-                    className={`w-full ${mentor.availableToday ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-600 hover:bg-gray-700'} text-white`}
-                    disabled={!mentor.availableToday}
-                  >
-                    {mentor.availableToday ? 'Chat Now' : 'Message'}
-                  </Button>
+                  <div className="flex space-x-2">
+                    {mentor.availableToday ? (
+                      <Button 
+                        onClick={() => openMentorChat(mentor)}
+                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                      >
+                        <MessageCircle className="w-4 h-4 mr-2" />
+                        Chat Now
+                      </Button>
+                    ) : (
+                      <Button 
+                        onClick={() => openMentorChat(mentor)}
+                        className="flex-1 bg-gray-600 hover:bg-gray-700 text-white"
+                      >
+                        <MessageCircle className="w-4 h-4 mr-2" />
+                        Send Message
+                      </Button>
+                    )}
+                  </div>
                 </div>
               ))}
             </CardContent>
@@ -516,6 +560,14 @@ const CommunityHub: React.FC<CommunityHubProps> = ({ onBack }) => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Mentor Chat Modal */}
+      {selectedMentor && (
+        <MentorChat 
+          mentor={selectedMentor} 
+          onClose={closeMentorChat}
+        />
+      )}
     </div>
   );
 };
