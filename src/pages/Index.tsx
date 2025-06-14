@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import ScenarioSelector from '@/components/ScenarioSelector';
 import ConversationCoach from '@/components/ConversationCoach';
 import ProgressDashboard from '@/components/ProgressDashboard';
+import AudioSupport from '@/components/AudioSupport';
 import { 
   MessageCircle, 
   BarChart3, 
@@ -16,10 +17,11 @@ import {
   Star,
   CheckCircle,
   Eye,
-  EyeOff
+  EyeOff,
+  Headphones
 } from 'lucide-react';
 
-type AppState = 'welcome' | 'scenarios' | 'coaching' | 'progress';
+type AppState = 'welcome' | 'scenarios' | 'coaching' | 'progress' | 'audio-support';
 
 interface SessionResult {
   id: string;
@@ -110,6 +112,15 @@ const Index = () => {
                 <Sparkles className="w-6 h-6 mr-2" />
                 Start Your Journey
                 <ArrowRight className="w-6 h-6 ml-2" />
+              </Button>
+              <Button 
+                variant="outline" 
+                size="lg"
+                onClick={() => setCurrentState('audio-support')}
+                className="px-10 py-6 text-lg font-semibold border-2 border-slate-600 hover:border-green-400 hover:bg-green-950/50 transition-all duration-300 text-slate-200 hover:text-white"
+              >
+                <Headphones className="w-6 h-6 mr-2" />
+                Audio Support
               </Button>
               <Button 
                 variant="outline" 
@@ -261,6 +272,8 @@ const Index = () => {
             onStartNewSession={() => setCurrentState('scenarios')}
           />
         );
+      case 'audio-support':
+        return <AudioSupport onBack={() => setCurrentState('welcome')} />;
       default:
         return renderWelcomeScreen();
     }
@@ -285,6 +298,14 @@ const Index = () => {
                 className={`px-4 py-2 rounded-lg font-medium transition-all ${currentState === 'scenarios' ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}`}
               >
                 Practice
+              </Button>
+              <Button 
+                variant="ghost" 
+                onClick={() => setCurrentState('audio-support')}
+                className={`px-4 py-2 rounded-lg font-medium transition-all ${currentState === 'audio-support' ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}`}
+              >
+                <Headphones className="w-4 h-4 mr-2" />
+                Audio Support
               </Button>
               <Button 
                 variant="ghost" 
