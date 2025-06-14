@@ -46,6 +46,7 @@ const Index = () => {
       scenario: selectedScenario,
       score: score,
       duration: Math.floor(Math.random() * 15) + 10,
+      date: new Date(),
       improvements: ['Active listening', 'Confidence building']
     };
     
