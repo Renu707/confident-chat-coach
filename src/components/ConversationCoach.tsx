@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -59,20 +60,20 @@ const ConversationCoach: React.FC<ConversationCoachProps> = ({
   // Initialize speech recognition
   useEffect(() => {
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.continuous = false;
-      recognitionRef.current.interimResults = true;
-      recognitionRef.current.lang = 'en-US';
+      const SpeechRecognitionConstructor = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      recognitionRef.current = new SpeechRecognitionConstructor();
+      recognitionRef.current!.continuous = false;
+      recognitionRef.current!.interimResults = true;
+      recognitionRef.current!.lang = 'en-US';
 
-      recognitionRef.current.onstart = () => {
+      recognitionRef.current!.onstart = () => {
         setIsListening(true);
       };
 
-      recognitionRef.current.onresult = (event) => {
+      recognitionRef.current!.onresult = (event: any) => {
         const transcript = Array.from(event.results)
-          .map(result => result[0])
-          .map(result => result.transcript)
+          .map((result: any) => result[0])
+          .map((result: any) => result.transcript)
           .join('');
 
         if (event.results[0].isFinal) {
@@ -81,11 +82,11 @@ const ConversationCoach: React.FC<ConversationCoachProps> = ({
         }
       };
 
-      recognitionRef.current.onerror = () => {
+      recognitionRef.current!.onerror = () => {
         setIsListening(false);
       };
 
-      recognitionRef.current.onend = () => {
+      recognitionRef.current!.onend = () => {
         setIsListening(false);
       };
     }
@@ -366,7 +367,7 @@ const ConversationCoach: React.FC<ConversationCoachProps> = ({
       setConfidenceScore(prev => Math.min(100, prev + 5));
 
       // Speak the coach response if audio is enabled
-      if (isAudioEnabled) {
+      if (isAudioEnabled && 'speechSynthesis' in window) {
         speakText(coachResponse.content);
       }
     }, 1000 + Math.random() * 1000);
@@ -419,15 +420,17 @@ const ConversationCoach: React.FC<ConversationCoachProps> = ({
       recognitionRef.current.stop();
     } else {
       // Stop any current speech before listening
-      speechSynthesis.cancel();
-      setIsSpeaking(false);
+      if ('speechSynthesis' in window) {
+        speechSynthesis.cancel();
+        setIsSpeaking(false);
+      }
       recognitionRef.current.start();
     }
   };
 
   const toggleAudio = () => {
     setIsAudioEnabled(!isAudioEnabled);
-    if (!isAudioEnabled && isSpeaking) {
+    if (!isAudioEnabled && isSpeaking && 'speechSynthesis' in window) {
       speechSynthesis.cancel();
       setIsSpeaking(false);
     }
