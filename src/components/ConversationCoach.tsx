@@ -64,7 +64,6 @@ const ConversationCoach: React.FC<ConversationCoachProps> = ({
       recognitionRef.current!.continuous = false;
       recognitionRef.current!.interimResults = true;
       recognitionRef.current!.lang = 'en-US';
-      recognitionRef.current!.maxAlternatives = 1;
 
       recognitionRef.current!.onstart = () => {
         console.log('Speech recognition started');
