@@ -61,8 +61,10 @@ const ConversationCoach: React.FC<ConversationCoachProps> = ({
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
       const SpeechRecognitionConstructor = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
       recognitionRef.current = new SpeechRecognitionConstructor();
-      recognitionRef.current!.continuous = false;
-      recognitionRef.current!.interimResults = true;
+      
+      // Configure speech recognition for better performance
+      recognitionRef.current!.continuous = true; // Keep listening
+      recognitionRef.current!.interimResults = true; // Get partial results
       recognitionRef.current!.lang = 'en-US';
 
       recognitionRef.current!.onstart = () => {
@@ -71,18 +73,36 @@ const ConversationCoach: React.FC<ConversationCoachProps> = ({
       };
 
       recognitionRef.current!.onresult = (event: any) => {
-        console.log('Speech recognition result:', event);
-        let transcript = '';
+        console.log('Speech recognition result received:', event);
         
+        let finalTranscript = '';
+        let interimTranscript = '';
+        
+        // Process all results
         for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          
           if (event.results[i].isFinal) {
-            transcript += event.results[i][0].transcript;
+            finalTranscript += transcript;
+            console.log('Final transcript:', transcript);
+          } else {
+            interimTranscript += transcript;
+            console.log('Interim transcript:', transcript);
           }
         }
 
-        if (transcript.trim()) {
-          console.log('Final transcript:', transcript);
-          setCurrentInput(prev => prev + transcript);
+        // Update input with final transcript
+        if (finalTranscript.trim()) {
+          setCurrentInput(prev => {
+            const newValue = prev + finalTranscript;
+            console.log('Updated input value:', newValue);
+            return newValue;
+          });
+        }
+        
+        // Show interim results as placeholder
+        if (interimTranscript.trim() && !finalTranscript.trim()) {
+          console.log('Showing interim results:', interimTranscript);
         }
       };
 
@@ -90,11 +110,28 @@ const ConversationCoach: React.FC<ConversationCoachProps> = ({
         console.error('Speech recognition error:', event.error);
         setIsListening(false);
         
-        // Show user-friendly error message
-        if (event.error === 'not-allowed') {
-          alert('Microphone access denied. Please allow microphone access and try again.');
-        } else if (event.error === 'no-speech') {
-          console.log('No speech detected, try speaking again');
+        // Handle specific errors
+        switch (event.error) {
+          case 'not-allowed':
+            alert('Microphone access denied. Please allow microphone access in your browser settings and try again.');
+            break;
+          case 'no-speech':
+            console.log('No speech detected. Please try speaking again.');
+            // Don't show alert for no-speech, just restart
+            setTimeout(() => {
+              if (isListening) {
+                recognitionRef.current?.start();
+              }
+            }, 1000);
+            break;
+          case 'audio-capture':
+            alert('No microphone found. Please connect a microphone and try again.');
+            break;
+          case 'network':
+            alert('Network error occurred. Please check your internet connection.');
+            break;
+          default:
+            console.log('Speech recognition error:', event.error);
         }
       };
 
@@ -114,7 +151,7 @@ const ConversationCoach: React.FC<ConversationCoachProps> = ({
         speechSynthesis.cancel();
       }
     };
-  }, []);
+  }, [isListening]);
 
   // Dynamic conversation generation system
   const generateUniqueConversation = (): ConversationContext => {
@@ -427,17 +464,22 @@ const ConversationCoach: React.FC<ConversationCoachProps> = ({
 
   const toggleListening = async () => {
     if (!recognitionRef.current) {
-      alert('Speech recognition is not supported in your browser. Please try using Chrome or Edge.');
+      alert('Speech recognition is not supported in your browser. Please try using Chrome, Edge, or Safari.');
       return;
     }
 
     if (isListening) {
       console.log('Stopping speech recognition');
       recognitionRef.current.stop();
+      setIsListening(false);
     } else {
       try {
-        // Request microphone permission first
-        await navigator.mediaDevices.getUserMedia({ audio: true });
+        // Request microphone permission explicitly first
+        console.log('Requesting microphone access');
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        
+        // Stop the stream immediately as we just needed permission
+        stream.getTracks().forEach(track => track.stop());
         
         // Stop any current speech before listening
         if ('speechSynthesis' in window) {
@@ -447,9 +489,26 @@ const ConversationCoach: React.FC<ConversationCoachProps> = ({
         
         console.log('Starting speech recognition');
         recognitionRef.current.start();
+        setIsListening(true);
       } catch (error) {
         console.error('Microphone access error:', error);
-        alert('Could not access microphone. Please check your browser settings and allow microphone access.');
+        setIsListening(false);
+        
+        if (error instanceof DOMException) {
+          switch (error.name) {
+            case 'NotAllowedError':
+              alert('Microphone access denied. Please allow microphone access and try again.');
+              break;
+            case 'NotFoundError':
+              alert('No microphone found. Please connect a microphone and try again.');
+              break;
+            case 'NotReadableError':
+              alert('Microphone is being used by another application. Please close other apps using the microphone.');
+              break;
+            default:
+              alert('Could not access microphone. Please check your browser settings.');
+          }
+        }
       }
     }
   };
@@ -689,20 +748,21 @@ const ConversationCoach: React.FC<ConversationCoachProps> = ({
             <Input
               value={currentInput}
               onChange={(e) => setCurrentInput(e.target.value)}
-              placeholder={isListening ? "🎤 Listening... Speak now!" : "Type or speak your response... 🌟"}
+              placeholder={isListening ? "🎤 Listening... Speak clearly into your microphone!" : "Type or speak your response... 🌟"}
               onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
-              className={`pr-14 py-3 text-base bg-slate-700 border-slate-600 text-slate-100 placeholder:text-slate-400 focus:border-blue-400 focus:ring-blue-400/20 ${isListening ? 'ring-2 ring-red-400 border-red-400' : ''}`}
+              className={`pr-14 py-3 text-base bg-slate-700 border-slate-600 text-slate-100 placeholder:text-slate-400 focus:border-blue-400 focus:ring-blue-400/20 ${isListening ? 'ring-2 ring-green-400 border-green-400 bg-green-900/20' : ''}`}
               disabled={isTyping}
             />
             <Button
               size="sm"
               variant="ghost"
-              className={`absolute right-2 top-1/2 transform -translate-y-1/2 hover:bg-slate-600 text-slate-400 hover:text-slate-200 transition-all ${isListening ? 'text-red-400 bg-red-900/30 scale-110' : ''}`}
+              className={`absolute right-2 top-1/2 transform -translate-y-1/2 hover:bg-slate-600 text-slate-400 hover:text-slate-200 transition-all ${isListening ? 'text-green-400 bg-green-900/30 scale-110 animate-pulse' : ''}`}
               onClick={toggleListening}
               disabled={isTyping || isSpeaking}
+              title={isListening ? "Stop recording" : "Start voice input"}
             >
               {isListening ? (
-                <Mic className="w-4 h-4 animate-pulse" />
+                <Mic className="w-4 h-4" />
               ) : (
                 <MicOff className="w-4 h-4" />
               )}
@@ -724,8 +784,8 @@ const ConversationCoach: React.FC<ConversationCoachProps> = ({
               <p>Currently: {conversationContext.mood} conversation</p>
             )}
             {isAudioEnabled && (
-              <p className="text-blue-400">
-                {isListening ? '🎤 Recording... Speak now!' : '🎤 Voice mode active - Click mic to speak!'}
+              <p className={isListening ? 'text-green-400 font-medium' : 'text-blue-400'}>
+                {isListening ? '🎤 Recording... Speak now!' : '🎤 Click mic button to start voice input'}
               </p>
             )}
             {isPrivateMode && (
