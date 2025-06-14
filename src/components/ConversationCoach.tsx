@@ -64,85 +64,108 @@ const ConversationCoach: React.FC<ConversationCoachProps> = ({
       recognitionRef.current = new SpeechRecognitionConstructor();
       
       if (recognitionRef.current) {
+        console.log('Initializing speech recognition...');
+        
         // Configure speech recognition
-        recognitionRef.current.continuous = false; // Set to false for better control
+        recognitionRef.current.continuous = false;
         recognitionRef.current.interimResults = true;
         recognitionRef.current.lang = 'en-US';
 
         recognitionRef.current.onstart = () => {
-          console.log('Speech recognition started');
+          console.log('Speech recognition started successfully');
           setIsListening(true);
-          setSpeechFeedback('🎤 Listening... Please speak now');
+          setSpeechFeedback('🎤 Listening... Please speak clearly');
         };
 
-        recognitionRef.current.onresult = (event: any) => {
-          console.log('Speech recognition result:', event);
+        recognitionRef.current.onresult = (event: SpeechRecognitionEvent) => {
+          console.log('Speech recognition received results:', event.results.length);
           
           let finalTranscript = '';
           let interimTranscript = '';
           
-          for (let i = event.resultIndex; i < event.results.length; i++) {
-            const transcript = event.results[i][0].transcript;
+          // Process all results
+          for (let i = 0; i < event.results.length; i++) {
+            const result = event.results[i];
+            const transcript = result[0].transcript;
             
-            if (event.results[i].isFinal) {
+            console.log(`Result ${i}: "${transcript}" (final: ${result.isFinal})`);
+            
+            if (result.isFinal) {
               finalTranscript += transcript;
-              console.log('Final transcript:', transcript);
             } else {
               interimTranscript += transcript;
-              console.log('Interim transcript:', transcript);
             }
           }
 
-          // Update input with interim results for immediate feedback
-          if (interimTranscript) {
-            setSpeechFeedback(`🎤 Hearing: "${interimTranscript}"`);
+          // Show interim results for feedback
+          if (interimTranscript.trim()) {
+            console.log('Interim transcript:', interimTranscript);
+            setSpeechFeedback(`🎤 Hearing: "${interimTranscript.trim()}"`);
           }
 
-          // Add final transcript to input
+          // Process final transcript
           if (finalTranscript.trim()) {
-            console.log('Adding to input:', finalTranscript);
+            console.log('Final transcript received:', finalTranscript);
+            const cleanedTranscript = finalTranscript.trim();
+            
             setCurrentInput(prev => {
-              const newValue = (prev + ' ' + finalTranscript).trim();
-              console.log('Updated input:', newValue);
+              const newValue = prev ? `${prev} ${cleanedTranscript}` : cleanedTranscript;
+              console.log('Updated input field:', newValue);
               return newValue;
             });
-            setSpeechFeedback('✅ Speech captured! Click send or continue speaking');
+            
+            setSpeechFeedback(`✅ Captured: "${cleanedTranscript}"`);
+            
+            // Auto-stop listening after getting final result
+            setTimeout(() => {
+              if (recognitionRef.current && isListening) {
+                console.log('Auto-stopping recognition after final result');
+                recognitionRef.current.stop();
+              }
+            }, 500);
           }
         };
 
-        recognitionRef.current.onerror = (event: any) => {
-          console.error('Speech recognition error:', event.error);
+        recognitionRef.current.onerror = (event: SpeechRecognitionErrorEvent) => {
+          console.error('Speech recognition error:', event.error, event.message);
           setIsListening(false);
           
+          let errorMessage = '❌ ';
           switch (event.error) {
             case 'not-allowed':
-              setSpeechFeedback('❌ Microphone access denied. Please allow access and try again.');
+              errorMessage += 'Microphone access denied. Please allow microphone access and try again.';
               break;
             case 'no-speech':
-              setSpeechFeedback('🔇 No speech detected. Click the mic and try speaking again.');
+              errorMessage += 'No speech detected. Please speak louder and try again.';
               break;
             case 'audio-capture':
-              setSpeechFeedback('❌ No microphone found. Please connect a microphone.');
+              errorMessage += 'No microphone found. Please connect a microphone.';
               break;
             case 'network':
-              setSpeechFeedback('❌ Network error. Please check your internet connection.');
+              errorMessage += 'Network error. Please check your internet connection.';
+              break;
+            case 'aborted':
+              errorMessage += 'Speech recognition was stopped.';
               break;
             default:
-              setSpeechFeedback('❌ Speech recognition error. Please try again.');
+              errorMessage += `Speech recognition error: ${event.error}. Please try again.`;
           }
+          setSpeechFeedback(errorMessage);
         };
 
         recognitionRef.current.onend = () => {
           console.log('Speech recognition ended');
           setIsListening(false);
-          if (speechFeedback.includes('Listening')) {
+          
+          // Only show "click to speak" if we don't have an error message
+          if (!speechFeedback.includes('❌') && !speechFeedback.includes('✅')) {
             setSpeechFeedback('🎤 Click the microphone to speak again');
           }
         };
       }
     } else {
-      console.warn('Speech recognition not supported');
-      setSpeechFeedback('❌ Speech recognition not supported in this browser');
+      console.warn('Speech recognition not supported in this browser');
+      setSpeechFeedback('❌ Speech recognition not supported in this browser. Try Chrome, Edge, or Safari.');
     }
 
     return () => {
@@ -153,7 +176,7 @@ const ConversationCoach: React.FC<ConversationCoachProps> = ({
         speechSynthesis.cancel();
       }
     };
-  }, [speechFeedback]);
+  }, []);
 
   // Dynamic conversation generation system
   const generateUniqueConversation = (): ConversationContext => {
@@ -467,52 +490,63 @@ const ConversationCoach: React.FC<ConversationCoachProps> = ({
   };
 
   const toggleListening = async () => {
+    console.log('Toggle listening clicked, current state:', isListening);
+    
     if (!recognitionRef.current) {
+      console.log('Speech recognition not available');
       setSpeechFeedback('❌ Speech recognition not supported in this browser. Try Chrome, Edge, or Safari.');
       return;
     }
 
     if (isListening) {
-      console.log('Stopping speech recognition');
+      console.log('Stopping speech recognition...');
       recognitionRef.current.stop();
+      setIsListening(false);
+      setSpeechFeedback('🎤 Speech recognition stopped');
       return;
     }
 
     try {
-      // Stop any current speech before listening
+      console.log('Starting speech recognition...');
+      
+      // Stop any current speech synthesis
       if ('speechSynthesis' in window) {
         speechSynthesis.cancel();
         setIsSpeaking(false);
       }
       
-      // Request microphone permission first
-      console.log('Requesting microphone access');
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      stream.getTracks().forEach(track => track.stop()); // Stop the test stream
+      // Clear previous feedback
+      setSpeechFeedback('🎤 Requesting microphone access...');
       
-      console.log('Starting speech recognition');
+      // Test microphone access
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      console.log('Microphone access granted');
+      stream.getTracks().forEach(track => track.stop());
+      
+      // Start recognition
       recognitionRef.current.start();
+      console.log('Speech recognition start() called');
       
     } catch (error) {
-      console.error('Microphone access error:', error);
+      console.error('Error starting speech recognition:', error);
       setIsListening(false);
       
       if (error instanceof DOMException) {
         switch (error.name) {
           case 'NotAllowedError':
-            setSpeechFeedback('❌ Microphone access denied. Please allow microphone access in your browser settings.');
+            setSpeechFeedback('❌ Microphone access denied. Please allow microphone access in your browser settings and try again.');
             break;
           case 'NotFoundError':
             setSpeechFeedback('❌ No microphone found. Please connect a microphone and try again.');
             break;
           case 'NotReadableError':
-            setSpeechFeedback('❌ Microphone is being used by another application. Please close other apps using the microphone.');
+            setSpeechFeedback('❌ Microphone is being used by another application. Please close other apps and try again.');
             break;
           default:
-            setSpeechFeedback('❌ Could not access microphone. Please check your browser settings.');
+            setSpeechFeedback('❌ Could not access microphone. Please check your browser settings and try again.');
         }
       } else {
-        setSpeechFeedback('❌ Microphone access failed. Please try again.');
+        setSpeechFeedback('❌ Failed to start speech recognition. Please try again.');
       }
     }
   };
@@ -763,7 +797,7 @@ const ConversationCoach: React.FC<ConversationCoachProps> = ({
               className={`absolute right-2 top-1/2 transform -translate-y-1/2 hover:bg-slate-600 text-slate-400 hover:text-slate-200 transition-all ${isListening ? 'text-green-400 bg-green-900/30 scale-110 animate-pulse' : ''}`}
               onClick={toggleListening}
               disabled={isTyping || isSpeaking}
-              title={isListening ? "Stop recording (speech will be processed)" : "Start voice input"}
+              title={isListening ? "Stop recording" : "Start voice input"}
             >
               {isListening ? (
                 <Mic className="w-4 h-4" />
