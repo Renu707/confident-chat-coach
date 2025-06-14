@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { MessageCircle, Send, Mic, MicOff, RotateCcw, Lightbulb, Shield, Eye, EyeOff, Heart, Star, Shuffle } from 'lucide-react';
+import { MessageCircle, Send, Mic, MicOff, RotateCcw, Lightbulb, Shield, Eye, EyeOff, Heart, Star, Shuffle, Target } from 'lucide-react';
 
 interface Message {
   id: string;
@@ -452,6 +452,25 @@ const ConversationCoach: React.FC<ConversationCoachProps> = ({
       {/* Enhanced Conversation Area */}
       <ScrollArea className="flex-1 p-6 bg-gradient-to-br from-slate-900 to-slate-800" ref={scrollAreaRef}>
         <div className="space-y-6">
+          {/* Goal Display Card - Always Visible */}
+          {conversationContext && (
+            <div className="sticky top-0 z-10 mb-4">
+              <Card className="bg-gradient-to-r from-green-900/40 to-emerald-900/40 border-green-700/50 backdrop-blur-sm">
+                <div className="p-4">
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2 bg-green-800/50 rounded-lg">
+                      <Target className="w-5 h-5 text-green-400" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-green-300 text-sm">Today's Practice Goal</h3>
+                      <p className="text-green-200 text-sm capitalize">{conversationContext.conversationGoal}</p>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            </div>
+          )}
+
           {messages.map((message) => (
             <div key={message.id} className="animate-fade-in">
               <div className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
