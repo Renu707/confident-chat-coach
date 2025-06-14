@@ -48,6 +48,7 @@ const EmotionalSupport: React.FC<EmotionalSupportProps> = ({ onBack }) => {
   const [sessionTime, setSessionTime] = useState(0);
   const [journalEntry, setJournalEntry] = useState('');
   const [weeklyProgress, setWeeklyProgress] = useState(65);
+  const [activeTab, setActiveTab] = useState('daily-support');
   const [dailyGoals, setDailyGoals] = useState([
     { id: 1, text: "Practice one affirmation", completed: false },
     { id: 2, text: "Check in with emotions", completed: false },
@@ -348,6 +349,11 @@ const EmotionalSupport: React.FC<EmotionalSupportProps> = ({ onBack }) => {
     }
   };
 
+  // New function to handle professional help navigation
+  const navigateToProfessionalHelp = () => {
+    setActiveTab('professional-help');
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-950 via-purple-950 to-indigo-950">
       {/* Navigation */}
@@ -458,7 +464,7 @@ const EmotionalSupport: React.FC<EmotionalSupportProps> = ({ onBack }) => {
           </CardContent>
         </Card>
 
-        <Tabs defaultValue="daily-support" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 bg-purple-900/60 border border-purple-700">
             <TabsTrigger value="daily-support" className="data-[state=active]:bg-pink-600 data-[state=active]:text-white text-purple-300">
               <Heart className="w-4 h-4 mr-2" />
@@ -798,6 +804,71 @@ const EmotionalSupport: React.FC<EmotionalSupportProps> = ({ onBack }) => {
             </div>
           </TabsContent>
         </Tabs>
+
+        {/* Updated Support Section with proper navigation */}
+        <div className="mt-12 text-center mb-8">
+          <Heart className="w-16 h-16 text-pink-400 mx-auto mb-4" />
+          <h2 className="text-3xl font-bold text-white mb-4">
+            You Are Seen, Heard, and Valued 💕
+          </h2>
+          <p className="text-xl text-slate-300 max-w-3xl mx-auto">
+            Every step you take toward better communication is an act of courage. 
+            We're here to support you every step of the way.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* Emergency Support */}
+          <Card className="bg-gradient-to-r from-red-900/30 to-pink-900/30 border-red-600/30">
+            <CardHeader>
+              <CardTitle className="text-red-300">Feeling Overwhelmed?</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-red-200 mb-4">
+                It's okay to have difficult days. You're still making progress.
+              </p>
+              <Button className="w-full bg-red-600 hover:bg-red-700 text-white">
+                Take a Gentle Break 🤗
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Community Support */}
+          <Card className="bg-gradient-to-r from-blue-900/30 to-purple-900/30 border-blue-600/30">
+            <CardHeader>
+              <CardTitle className="text-blue-300">Community Connection</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-blue-200 mb-4">
+                Connect with others on similar journeys for mutual support.
+              </p>
+              <Button 
+                onClick={() => setActiveTab('community')}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                Join Support Groups 👥
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Professional Help */}
+          <Card className="bg-gradient-to-r from-green-900/30 to-emerald-900/30 border-green-600/30">
+            <CardHeader>
+              <CardTitle className="text-green-300">Professional Support</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-green-200 mb-4">
+                Find qualified speech therapists and counselors in your area.
+              </p>
+              <Button 
+                onClick={navigateToProfessionalHelp}
+                className="w-full bg-green-600 hover:bg-green-700 text-white"
+              >
+                Find Therapists 🏥
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );
