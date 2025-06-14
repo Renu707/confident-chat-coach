@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
+import { Input } from '@/components/ui/input';
 import { 
   Heart, 
   Phone, 
@@ -22,11 +22,20 @@ import {
   Play,
   Pause,
   Check,
-  Timer
+  Timer,
+  Search,
+  Navigation
 } from 'lucide-react';
 
 interface EmotionalSupportProps {
   onBack: () => void;
+}
+
+interface UserLocation {
+  city: string;
+  state: string;
+  country: string;
+  zipCode: string;
 }
 
 const EmotionalSupport: React.FC<EmotionalSupportProps> = ({ onBack }) => {
@@ -44,6 +53,11 @@ const EmotionalSupport: React.FC<EmotionalSupportProps> = ({ onBack }) => {
     { id: 2, text: "Check in with emotions", completed: false },
     { id: 3, text: "Take 5 deep breaths", completed: false }
   ]);
+
+  const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
+  const [locationInput, setLocationInput] = useState('');
+  const [showLocationPrompt, setShowLocationPrompt] = useState(true);
+  const [isDetectingLocation, setIsDetectingLocation] = useState(false);
 
   const dailyAffirmations = [
     "🌟 Your voice has unique value and deserves to be heard",
@@ -218,6 +232,120 @@ const EmotionalSupport: React.FC<EmotionalSupportProps> = ({ onBack }) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const getLocalizedProfessionalResources = (location: UserLocation) => {
+    const baseResources = [
+      {
+        id: "slp",
+        title: "Speech-Language Pathologists",
+        description: `Find certified SLPs in ${location.city}, ${location.state} who specialize in stuttering, voice therapy, and communication disorders.`,
+        searchUrl: `https://www.asha.org/profind/?location=${encodeURIComponent(location.city + ', ' + location.state)}`,
+        localInfo: `${location.state} licensing requirements and insurance coverage`,
+        color: "from-blue-900/40 to-cyan-900/40",
+        border: "border-blue-700/50",
+        text: "text-blue-300"
+      },
+      {
+        id: "anxiety",
+        title: "Anxiety Specialists",
+        description: `Connect with therapists in ${location.city} area who specialize in social anxiety, communication anxiety, and related challenges.`,
+        searchUrl: `https://www.psychologytoday.com/us/therapists/${location.state.toLowerCase()}/${location.city.toLowerCase().replace(/\s+/g, '-')}`,
+        localInfo: `Local support groups and ${location.state} mental health resources`,
+        color: "from-purple-900/40 to-pink-900/40", 
+        border: "border-purple-700/50",
+        text: "text-purple-300"
+      },
+      {
+        id: "groups",
+        title: "Local Support Groups",
+        description: `Find in-person support groups in ${location.city}, ${location.state} for stuttering, social anxiety, and communication challenges.`,
+        searchUrl: `https://www.nami.org/Support-Education/Support-Groups?location=${encodeURIComponent(location.zipCode)}`,
+        localInfo: `${location.city} chapter meetings and peer support programs`,
+        color: "from-green-900/40 to-teal-900/40",
+        border: "border-green-700/50", 
+        text: "text-green-300"
+      }
+    ];
+
+    // Add country-specific resources
+    if (location.country === 'US') {
+      baseResources.push({
+        id: "insurance",
+        title: "Insurance Coverage Help",
+        description: `Navigate ${location.state} insurance requirements for speech therapy and mental health services.`,
+        searchUrl: `https://www.healthcare.gov/see-plans/#/plan/results/${location.state}`,
+        localInfo: `${location.state} Medicaid and marketplace options`,
+        color: "from-orange-900/40 to-red-900/40",
+        border: "border-orange-700/50",
+        text: "text-orange-300"
+      });
+    }
+
+    return baseResources;
+  };
+
+  const detectUserLocation = async () => {
+    setIsDetectingLocation(true);
+    try {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          async (position) => {
+            try {
+              // Use a geolocation API to get city/state from coordinates
+              const response = await fetch(
+                `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${position.coords.latitude}&longitude=${position.coords.longitude}&localityLanguage=en`
+              );
+              const data = await response.json();
+              
+              const location: UserLocation = {
+                city: data.city || data.locality || 'Your area',
+                state: data.principalSubdivision || data.countryName,
+                country: data.countryCode || 'US',
+                zipCode: data.postcode || ''
+              };
+              
+              setUserLocation(location);
+              setShowLocationPrompt(false);
+            } catch (error) {
+              console.log('Geocoding failed:', error);
+              // Fallback to manual entry
+              setShowLocationPrompt(true);
+            }
+            setIsDetectingLocation(false);
+          },
+          (error) => {
+            console.log('Geolocation failed:', error);
+            setIsDetectingLocation(false);
+            setShowLocationPrompt(true);
+          }
+        );
+      } else {
+        setIsDetectingLocation(false);
+        setShowLocationPrompt(true);
+      }
+    } catch (error) {
+      console.log('Location detection failed:', error);
+      setIsDetectingLocation(false);
+      setShowLocationPrompt(true);
+    }
+  };
+
+  const handleManualLocationEntry = () => {
+    if (locationInput.trim()) {
+      // Parse location input (assume format: "City, State" or "City, State, ZIP")
+      const parts = locationInput.split(',').map(part => part.trim());
+      const location: UserLocation = {
+        city: parts[0] || 'Your area',
+        state: parts[1] || 'Your state',
+        country: 'US', // Default to US, can be enhanced
+        zipCode: parts[2] || ''
+      };
+      
+      setUserLocation(location);
+      setShowLocationPrompt(false);
+      setLocationInput('');
+    }
   };
 
   return (
@@ -466,89 +594,148 @@ const EmotionalSupport: React.FC<EmotionalSupportProps> = ({ onBack }) => {
           </TabsContent>
 
           <TabsContent value="professional-help" className="space-y-6">
+            {/* Location Prompt */}
+            {showLocationPrompt && (
+              <Card className="bg-gradient-to-r from-yellow-900/40 to-orange-900/40 border-yellow-700/50 mb-6">
+                <CardHeader>
+                  <CardTitle className="text-yellow-300 flex items-center">
+                    <MapPin className="w-5 h-5 mr-2" />
+                    Help Us Find Local Resources for You
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <p className="text-yellow-200">
+                    To provide you with the most relevant therapists, support groups, and resources, 
+                    we'd like to know your general location. This information is only used to personalize 
+                    your search results and is not stored permanently.
+                  </p>
+                  
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <Button 
+                      onClick={detectUserLocation}
+                      disabled={isDetectingLocation}
+                      className="bg-yellow-600 hover:bg-yellow-700 text-white flex items-center"
+                    >
+                      {isDetectingLocation ? (
+                        <>
+                          <Timer className="w-4 h-4 mr-2 animate-spin" />
+                          Detecting...
+                        </>
+                      ) : (
+                        <>
+                          <Navigation className="w-4 h-4 mr-2" />
+                          Auto-Detect Location
+                        </>
+                      )}
+                    </Button>
+                    
+                    <div className="flex gap-2 flex-1">
+                      <Input
+                        placeholder="Or enter: City, State, ZIP"
+                        value={locationInput}
+                        onChange={(e) => setLocationInput(e.target.value)}
+                        className="bg-yellow-900/30 border-yellow-700 text-yellow-200 placeholder:text-yellow-400"
+                        onKeyPress={(e) => e.key === 'Enter' && handleManualLocationEntry()}
+                      />
+                      <Button 
+                        onClick={handleManualLocationEntry}
+                        className="bg-yellow-600 hover:bg-yellow-700 text-white"
+                      >
+                        <Search className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <Button 
+                    variant="ghost"
+                    onClick={() => setShowLocationPrompt(false)}
+                    className="text-yellow-400 hover:bg-yellow-800/30 w-full"
+                  >
+                    Skip for now (show general resources)
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+
             <div className="text-center mb-6">
               <BookHeart className="w-16 h-16 text-blue-400 mx-auto mb-4" />
-              <h2 className="text-3xl font-bold text-white mb-2">Professional Support 🏥</h2>
+              <h2 className="text-3xl font-bold text-white mb-2">
+                Professional Support {userLocation && `in ${userLocation.city}, ${userLocation.state}`} 🏥
+              </h2>
               <p className="text-xl text-blue-300 max-w-3xl mx-auto">
-                Find qualified therapists and speech-language pathologists who specialize in your specific needs.
+                {userLocation 
+                  ? `Find qualified therapists and speech-language pathologists in your ${userLocation.city} area who specialize in your specific needs.`
+                  : "Find qualified therapists and speech-language pathologists who specialize in your specific needs."
+                }
               </p>
+              {userLocation && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowLocationPrompt(true)}
+                  className="mt-2 border-blue-600 text-blue-300 hover:bg-blue-800"
+                >
+                  <MapPin className="w-4 h-4 mr-2" />
+                  Change Location
+                </Button>
+              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <Card className="bg-gradient-to-r from-blue-900/40 to-cyan-900/40 border-blue-700/50">
-                <CardHeader>
-                  <CardTitle className="text-blue-300">Speech-Language Pathologists</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <p className="text-blue-200">Find certified SLPs who specialize in stuttering, voice therapy, and communication disorders.</p>
-                  <div className="space-y-2">
-                    <div className="flex items-center text-sm text-blue-300">
-                      <MapPin className="w-4 h-4 mr-2" />
-                      Filter by location & insurance
+              {userLocation ? (
+                getLocalizedProfessionalResources(userLocation).map((resource) => (
+                  <Card key={resource.id} className={`bg-gradient-to-r ${resource.color} ${resource.border}`}>
+                    <CardHeader>
+                      <CardTitle className={resource.text}>{resource.title}</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <p className={`${resource.text.replace('300', '200')}`}>{resource.description}</p>
+                      <div className="space-y-2">
+                        <div className="flex items-center text-sm opacity-90">
+                          <MapPin className="w-4 h-4 mr-2" />
+                          {resource.localInfo}
+                        </div>
+                        <div className="flex items-center text-sm opacity-90">
+                          <Headphones className="w-4 h-4 mr-2" />
+                          Telehealth options available
+                        </div>
+                      </div>
+                      <Button 
+                        className={`w-full bg-gradient-to-r ${resource.color.replace('/40', '')} text-white hover:opacity-90`}
+                        onClick={() => window.open(resource.searchUrl, '_blank')}
+                      >
+                        Find Local {resource.title.split(' ')[0]}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))
+              ) : (
+                // Default resources when no location is provided
+                <Card className="bg-gradient-to-r from-blue-900/40 to-cyan-900/40 border-blue-700/50">
+                  <CardHeader>
+                    <CardTitle className="text-blue-300">Speech-Language Pathologists</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <p className="text-blue-200">Find certified SLPs who specialize in stuttering, voice therapy, and communication disorders.</p>
+                    <div className="space-y-2">
+                      <div className="flex items-center text-sm text-blue-300">
+                        <MapPin className="w-4 h-4 mr-2" />
+                        Filter by location & insurance
+                      </div>
+                      <div className="flex items-center text-sm text-blue-300">
+                        <Headphones className="w-4 h-4 mr-2" />
+                        Telehealth options available
+                      </div>
                     </div>
-                    <div className="flex items-center text-sm text-blue-300">
-                      <Headphones className="w-4 h-4 mr-2" />
-                      Telehealth options available
-                    </div>
-                  </div>
-                  <Button 
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-                    onClick={() => window.open('https://www.asha.org/profind/', '_blank')}
-                  >
-                    Find SLP Near You
-                  </Button>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-gradient-to-r from-purple-900/40 to-pink-900/40 border-purple-700/50">
-                <CardHeader>
-                  <CardTitle className="text-purple-300">Anxiety Specialists</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <p className="text-purple-200">Connect with therapists who specialize in social anxiety, communication anxiety, and related challenges.</p>
-                  <div className="space-y-2">
-                    <div className="flex items-center text-sm text-purple-300">
-                      <Brain className="w-4 h-4 mr-2" />
-                      CBT, DBT, and other approaches
-                    </div>
-                    <div className="flex items-center text-sm text-purple-300">
-                      <Calendar className="w-4 h-4 mr-2" />
-                      Same-week appointments
-                    </div>
-                  </div>
-                  <Button 
-                    className="w-full bg-purple-600 hover:bg-purple-700 text-white"
-                    onClick={() => window.open('https://www.psychologytoday.com/us/therapists', '_blank')}
-                  >
-                    Find Therapist
-                  </Button>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-gradient-to-r from-green-900/40 to-teal-900/40 border-green-700/50">
-                <CardHeader>
-                  <CardTitle className="text-green-300">Support Groups IRL</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <p className="text-green-200">Find in-person support groups in your area for stuttering, social anxiety, and communication challenges.</p>
-                  <div className="space-y-2">
-                    <div className="flex items-center text-sm text-green-300">
-                      <Users className="w-4 h-4 mr-2" />
-                      Local chapter meetings
-                    </div>
-                    <div className="flex items-center text-sm text-green-300">
-                      <Heart className="w-4 h-4 mr-2" />
-                      Peer support programs
-                    </div>
-                  </div>
-                  <Button 
-                    className="w-full bg-green-600 hover:bg-green-700 text-white"
-                    onClick={() => window.open('https://www.nami.org/Support-Education/Support-Groups', '_blank')}
-                  >
-                    Find Local Groups
-                  </Button>
-                </CardContent>
-              </Card>
+                    <Button 
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                      onClick={() => window.open('https://www.asha.org/profind/', '_blank')}
+                    >
+                      Find SLP Near You
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           </TabsContent>
 
