@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -127,7 +128,7 @@ const ConversationCoach: React.FC<ConversationCoachProps> = ({
         };
 
         recognitionRef.current.onerror = (event: SpeechRecognitionErrorEvent) => {
-          console.error('Speech recognition error:', event.error, event.message);
+          console.error('Speech recognition error:', event.error);
           setIsListening(false);
           
           let errorMessage = '❌ ';
