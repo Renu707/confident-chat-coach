@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -430,7 +431,10 @@ const SpeechTherapyFeatures: React.FC<SpeechTherapyFeaturesProps> = ({
         wordsPerMinute: 0,
         pauseDuration: 0,
         fillerWords: 0
-      }
+      },
+      spokenText: '',
+      fluencyScore: 0,
+      coherenceScore: 0
     });
 
     setExerciseProgress(0);
