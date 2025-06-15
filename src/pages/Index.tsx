@@ -7,6 +7,9 @@ import ProgressDashboard from '@/components/ProgressDashboard';
 import AudioSupport from '@/components/AudioSupport';
 import EmotionalSupport from '@/components/EmotionalSupport';
 import CommunityHub from '@/components/CommunityHub';
+import AnxietyProfileSetup from '@/components/AnxietyProfileSetup';
+import EmotionCheckIn from '@/components/EmotionCheckIn';
+import CopingToolkit from '@/components/CopingToolkit';
 import { 
   MessageCircle, 
   BarChart3, 
@@ -40,11 +43,31 @@ const Index = () => {
   const [selectedDifficulty, setSelectedDifficulty] = useState<'beginner' | 'intermediate' | 'advanced'>('beginner');
   const [sessions, setSessions] = useState<SessionResult[]>([]);
   const [isPrivateMode, setIsPrivateMode] = useState(false);
+  const [showAnxietyProfile, setShowAnxietyProfile] = useState(false);
+  const [showEmotionCheckIn, setShowEmotionCheckIn] = useState(false);
+  const [emotionCheckInType, setEmotionCheckInType] = useState<'pre' | 'post'>('pre');
+  const [showCopingToolkit, setShowCopingToolkit] = useState(false);
+  const [anxietyProfile, setAnxietyProfile] = useState(null);
 
   const handleSelectScenario = (scenarioId: string, difficulty: 'beginner' | 'intermediate' | 'advanced') => {
     setSelectedScenario(scenarioId);
     setSelectedDifficulty(difficulty);
-    setCurrentState('coaching');
+    
+    // Show emotion check-in before coaching
+    setEmotionCheckInType('pre');
+    setShowEmotionCheckIn(true);
+  };
+
+  const handleEmotionCheckInComplete = (emotions: any, notes?: string) => {
+    setShowEmotionCheckIn(false);
+    
+    if (emotionCheckInType === 'pre') {
+      // Start coaching session after pre-check-in
+      setCurrentState('coaching');
+    } else {
+      // Return to progress after post-check-in
+      setCurrentState('progress');
+    }
   };
 
   const handleSessionComplete = (score: number) => {
@@ -58,7 +81,16 @@ const Index = () => {
     };
     
     setSessions(prev => [...prev, newSession]);
-    setCurrentState('progress');
+    
+    // Show post-session emotion check-in
+    setEmotionCheckInType('post');
+    setShowEmotionCheckIn(true);
+  };
+
+  const handleAnxietyProfileComplete = (profile: any) => {
+    setAnxietyProfile(profile);
+    setShowAnxietyProfile(false);
+    setCurrentState('scenarios');
   };
 
   const renderWelcomeScreen = () => (
@@ -270,6 +302,39 @@ const Index = () => {
   );
 
   const renderContent = () => {
+    if (showAnxietyProfile) {
+      return (
+        <AnxietyProfileSetup 
+          onProfileComplete={handleAnxietyProfileComplete}
+          onSkip={() => {
+            setShowAnxietyProfile(false);
+            setCurrentState('scenarios');
+          }}
+        />
+      );
+    }
+
+    if (showEmotionCheckIn) {
+      return (
+        <EmotionCheckIn 
+          type={emotionCheckInType}
+          onComplete={handleEmotionCheckInComplete}
+          onSkip={() => {
+            setShowEmotionCheckIn(false);
+            if (emotionCheckInType === 'pre') {
+              setCurrentState('coaching');
+            } else {
+              setCurrentState('progress');
+            }
+          }}
+        />
+      );
+    }
+
+    if (showCopingToolkit) {
+      return <CopingToolkit onBack={() => setShowCopingToolkit(false)} />;
+    }
+
     switch (currentState) {
       case 'welcome':
         return renderWelcomeScreen();
@@ -303,8 +368,8 @@ const Index = () => {
     }
   };
 
-  // Navigation bar for non-welcome screens
-  if (currentState !== 'welcome') {
+  // Enhanced navigation for non-welcome screens
+  if (currentState !== 'welcome' && !showAnxietyProfile && !showEmotionCheckIn && !showCopingToolkit) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800">
         <nav className="bg-slate-800/90 backdrop-blur-sm border-b border-slate-700 px-6 py-4 shadow-sm">
@@ -322,6 +387,14 @@ const Index = () => {
                 className={`px-4 py-2 rounded-lg font-medium transition-all ${currentState === 'scenarios' ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}`}
               >
                 Practice
+              </Button>
+              <Button 
+                variant="ghost" 
+                onClick={() => setShowCopingToolkit(true)}
+                className="px-4 py-2 rounded-lg font-medium text-slate-300 hover:bg-slate-700 hover:text-white transition-all"
+              >
+                <Brain className="w-4 h-4 mr-2" />
+                Toolkit
               </Button>
               <Button 
                 variant="ghost" 
